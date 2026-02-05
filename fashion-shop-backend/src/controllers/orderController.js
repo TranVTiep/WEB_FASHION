@@ -1,6 +1,7 @@
 import Order from "../models/Order.js";
+import Product from "../models/Product.js"; // 👈 Quan trọng: Import để thao tác với kho
 
-// 1. Tạo đơn hàng mới
+// 1. Tạo đơn hàng mới (CÓ TRỪ KHO)
 export const createOrder = async (req, res) => {
   try {
     const { items, total, address, phone } = req.body;
@@ -9,13 +10,41 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Giỏ hàng trống" });
     }
 
-    // Kiểm tra dữ liệu đầu vào
     if (!address || !phone) {
       return res.status(400).json({
         message: "Vui lòng cung cấp địa chỉ và số điện thoại nhận hàng",
       });
     }
 
+    // 👇 BƯỚC 1: KIỂM TRA TỒN KHO
+    // Phải đảm bảo tất cả sản phẩm đều đủ hàng trước khi tạo đơn
+    for (const item of items) {
+      const productId = item.product._id || item.product;
+      const quantity = item.qty || item.quantity;
+
+      const productDB = await Product.findById(productId);
+      if (!productDB) {
+        return res.status(404).json({ message: `Sản phẩm không tồn tại` });
+      }
+
+      if (productDB.stock < quantity) {
+        return res.status(400).json({
+          message: `Sản phẩm "${productDB.name}" không đủ hàng (Chỉ còn ${productDB.stock})`,
+        });
+      }
+    }
+
+    // 👇 BƯỚC 2: TRỪ TỒN KHO
+    for (const item of items) {
+      const productId = item.product._id || item.product;
+      const quantity = item.qty || item.quantity;
+
+      const productDB = await Product.findById(productId);
+      productDB.stock = productDB.stock - quantity; // Trừ đi số lượng mua
+      await productDB.save();
+    }
+
+    // 👇 BƯỚC 3: LƯU ĐƠN HÀNG
     const newOrder = new Order({
       user: req.user._id,
       items: items.map((item) => ({
@@ -23,12 +52,9 @@ export const createOrder = async (req, res) => {
         quantity: item.qty || item.quantity,
         price: item.product?.price || item.price,
       })),
-      totalPrice: total, // Lưu ý: Database của bạn đặt tên là total hay totalPrice? (Code cũ bạn để totalPrice, code frontend gửi total)
-      shippingAddress: {
-        address,
-        phone,
-      },
-      status: "Pending", // Sửa thành chữ Hoa "Pending" để khớp với logic Frontend
+      totalPrice: total,
+      shippingAddress: { address, phone },
+      status: "Pending",
     });
 
     const savedOrder = await newOrder.save();
@@ -38,23 +64,11 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// 2. Lấy danh sách đơn hàng của người dùng đang đăng nhập
+// 2. Lấy đơn hàng của tôi
 export const getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id })
       .populate("items.product")
-      .sort({ createdAt: -1 }); // Mới nhất lên đầu
-    res.json(orders);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// 3. Lấy TẤT CẢ đơn hàng (Dành cho Admin)
-export const getAllOrders = async (req, res) => {
-  try {
-    const orders = await Order.find({})
-      .populate("user", "name email") // Lấy thêm tên user
       .sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
@@ -62,13 +76,24 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
-// 4. Cập nhật trạng thái đơn hàng (Admin)
+// 3. Lấy tất cả đơn hàng (Admin)
+export const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({})
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 4. Cập nhật trạng thái (Admin)
 export const updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-    if (!order) {
+    if (!order)
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
-    }
 
     order.status = req.body.status || order.status;
     const updatedOrder = await order.save();
@@ -78,37 +103,38 @@ export const updateOrderStatus = async (req, res) => {
   }
 };
 
-// 5. Hủy đơn hàng (User) - 👇 HÀM MỚI THÊM VÀO ĐÂY
+// 5. Hủy đơn hàng (User) - CÓ HOÀN LẠI KHO
 export const cancelOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
 
-    if (!order) {
+    if (!order)
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
-    }
 
-    // Kiểm tra quyền chủ sở hữu
     if (order.user.toString() !== req.user._id.toString()) {
       return res
         .status(401)
         .json({ message: "Bạn không có quyền hủy đơn này" });
     }
 
-    // Kiểm tra trạng thái: Chỉ cho hủy nếu đang Pending (hoặc lowercase pending)
-    if (
-      order.status !== "Pending" &&
-      order.status !== "pending" &&
-      order.status !== "Chờ xử lý"
-    ) {
+    if (order.status !== "Pending" && order.status !== "Chờ xử lý") {
       return res
         .status(400)
-        .json({ message: "Đơn hàng đang giao hoặc đã xong, không thể hủy!" });
+        .json({ message: "Đơn hàng đang giao, không thể hủy!" });
     }
 
-    // Cập nhật trạng thái
+    // 👇 LOGIC MỚI: CỘNG LẠI KHO KHI HỦY
+    // Khi khách hủy đơn, phải trả lại hàng vào kho để người khác mua
+    for (const item of order.items) {
+      const product = await Product.findById(item.product);
+      if (product) {
+        product.stock = product.stock + item.quantity;
+        await product.save();
+      }
+    }
+
     order.status = "Cancelled";
     const updatedOrder = await order.save();
-
     res.json(updatedOrder);
   } catch (error) {
     res.status(500).json({ message: error.message });

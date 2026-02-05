@@ -1,60 +1,68 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import axios from "axios";
+import api from "../api/axios"; // 👈 Dùng instance api đã cấu hình (thay vì axios thường)
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-
-  // load user + token khi reload
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
-
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  // 1. Khởi tạo State an toàn (Tránh lỗi sập trang "undefined")
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser && savedUser !== "undefined") {
+        return JSON.parse(savedUser);
+      }
+      return null;
+    } catch (error) {
+      localStorage.removeItem("user"); // Xóa rác nếu lỗi
+      return null;
     }
-  }, []);
+  });
 
+  // 2. Tự động đồng bộ User vào LocalStorage mỗi khi thay đổi
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("user");
+    }
+  }, [user]);
+
+  // 3. Hàm Đăng Nhập
   const login = async (email, password) => {
-    const res = await axios.post("http://localhost:5000/api/auth/login", {
+    // Gọi API qua instance 'api' (đã có baseURL)
+    const res = await api.post("/auth/login", {
       email,
       password,
     });
 
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
+    // Backend trả về object phẳng: { _id, name, token, ... }
+    // Ta lưu nguyên cục này vào state user
+    const userData = res.data;
+    setUser(userData);
 
-    axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
-
-    setUser(res.data.user);
+    // Lưu ý: useEffect ở trên sẽ tự động lưu vào LocalStorage, không cần setItem thủ công ở đây
   };
 
+  // 4. Hàm Đăng Ký
   const register = async (name, email, password) => {
-    const res = await axios.post("http://localhost:5000/api/auth/register", {
+    const res = await api.post("/auth/register", {
       name,
       email,
       password,
     });
 
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
-
-    axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
-
-    setUser(res.data.user);
+    const userData = res.data;
+    setUser(userData);
   };
 
+  // 5. Hàm Đăng Xuất
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    delete axios.defaults.headers.common["Authorization"];
     setUser(null);
+    // useEffect sẽ tự động xóa LocalStorage
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, setUser, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

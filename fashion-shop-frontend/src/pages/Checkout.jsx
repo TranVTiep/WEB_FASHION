@@ -3,15 +3,21 @@ import { useCart } from "../context/CartContext";
 import { useNavigate, Link } from "react-router-dom"; // 👈 Import thêm Link
 import api from "../api/axios";
 import { toast } from "react-toastify";
-
+import { useAuth } from "../context/AuthContext";
 export default function Checkout() {
   const { cart, clearCart, selectedItems } = useCart();
   const navigate = useNavigate();
-
+  const { user } = useAuth();
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-
+  //
+  useEffect(() => {
+    if (user) {
+      setAddress(user.address || "");
+      setPhone(user.phone || "");
+    }
+  }, [user]);
   // 1. Lọc sản phẩm được chọn (Logic ép kiểu String chuẩn xác)
   const checkoutItems = cart.filter((item) => {
     if (!item.product || !item.product._id) return false;

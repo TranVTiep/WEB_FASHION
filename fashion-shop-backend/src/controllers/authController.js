@@ -1,7 +1,8 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import generateToken from "../utils/generateToken.js";
 
+// Đăng ký
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -15,30 +16,28 @@ export const register = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role: "user", // 👈 thêm rõ ràng
+      role: "user",
     });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" },
-    );
+    const token = generateToken(user._id);
 
+    // 👇 SỬA LẠI: Trả về object phẳng (Token nằm chung với thông tin)
     res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      address: user.address,
+      token: token, // <--- Token nằm ở đây
       message: "Đăng ký thành công",
-      token, // 👈 thêm token
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// Đăng nhập
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -51,21 +50,18 @@ export const login = async (req, res) => {
     if (!isMatch)
       return res.status(400).json({ message: "Sai email hoặc mật khẩu" });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" },
-    );
+    const token = generateToken(user._id);
 
+    // 👇 SỬA LẠI: Trả về object phẳng giống hệt bên trên
     res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      address: user.address,
+      token: token, // <--- Quan trọng
       message: "Đăng nhập thành công",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
