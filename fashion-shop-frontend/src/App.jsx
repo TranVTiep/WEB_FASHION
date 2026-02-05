@@ -12,7 +12,7 @@ import Orders from "./pages/Orders";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminCategories from "./pages/admin/AdminCategories";
-
+import AdminDashboard from "./pages/admin/AdminDashboard";
 function App() {
   return (
     // ✅ 2. Bọc toàn bộ trong div này để Footer luôn nằm dưới đáy
@@ -35,6 +35,7 @@ function App() {
           <Route path="/admin/orders" element={<AdminOrders />} />
           <Route path="/admin/products" element={<AdminProducts />} />
           <Route path="/admin/categories" element={<AdminCategories />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
         </Routes>
       </div>
 

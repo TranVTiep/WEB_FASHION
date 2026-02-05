@@ -1,142 +1,206 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
 import api from "../api/axios";
+import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
+import { useCart } from "../context/CartContext";
 
 export default function Home() {
-  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // State danh mục
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  // Dùng useRef cho ô tìm kiếm
+  const searchInputRef = useRef(null);
+
+  const { addToCart } = useCart();
+
+  // 1. Lấy danh sách danh mục
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchCategories = async () => {
       try {
-        // Lấy 4 sản phẩm mới nhất
-        const res = await api.get("/products");
-        const allProducts = Array.isArray(res.data)
-          ? res.data
-          : res.data.products || [];
-        setFeaturedProducts(allProducts.slice(0, 4)); // Chỉ lấy 4 cái đầu
+        const res = await api.get("/categories");
+        setCategories(res.data);
       } catch (err) {
-        console.error(err);
+        console.error("Lỗi lấy danh mục");
       }
     };
-    fetchProducts();
+    fetchCategories();
   }, []);
 
+  // 2. Hàm lấy sản phẩm
+  const fetchProducts = async (searchVal = "", catVal = selectedCategory) => {
+    setLoading(true);
+    try {
+      const res = await api.get("/products", {
+        params: {
+          keyword: searchVal,
+          category: catVal,
+        },
+      });
+      setProducts(res.data);
+    } catch (err) {
+      toast.error("Lỗi tải sản phẩm");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3. Tự động gọi API khi chọn danh mục
+  useEffect(() => {
+    const currentKeyword = searchInputRef.current
+      ? searchInputRef.current.value
+      : "";
+    fetchProducts(currentKeyword, selectedCategory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory]);
+
+  // 4. Xử lý khi bấm nút "Tìm kiếm"
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const keyword = searchInputRef.current.value;
+    fetchProducts(keyword, selectedCategory);
+  };
+
+  // 5. Xử lý khi thay đổi ô input (Xóa trắng -> Tự reset)
+  const handleInputChange = (e) => {
+    if (e.target.value === "") {
+      fetchProducts("", selectedCategory);
+    }
+  };
+
+  // 6. Xử lý Reset toàn bộ
+  const handleReset = () => {
+    if (searchInputRef.current) {
+      searchInputRef.current.value = "";
+    }
+    setSelectedCategory("");
+    fetchProducts("", "");
+  };
+
   return (
-    <div>
-      {/* 1. HERO SECTION (Banner chính) */}
-      <div className="relative bg-gray-900 text-white h-[500px] flex items-center justify-center">
-        {/* Ảnh nền mờ */}
-        <div className="absolute inset-0 overflow-hidden">
-          <img
-            src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop"
-            alt="Hero Banner"
-            className="w-full h-full object-cover opacity-40"
-          />
-        </div>
-
-        {/* Nội dung Banner */}
-        <div className="relative z-10 text-center px-4">
-          <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tighter">
-            NEW COLLECTION
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 font-light">
-            Phong cách tối giản. Đẳng cấp khác biệt.
-          </p>
-          <Link
-            to="/products"
-            className="bg-white text-black px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-200 transition transform hover:scale-105 inline-block"
+    <div className="max-w-7xl mx-auto p-6">
+      {/* --- PHẦN TÌM KIẾM & LỌC --- */}
+      <div className="mb-8 flex flex-col md:flex-row gap-4 items-center justify-between bg-gray-50 p-4 rounded-lg shadow-sm">
+        {/* Bộ lọc Danh mục */}
+        <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+          <button
+            onClick={() => setSelectedCategory("")}
+            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition
+              ${selectedCategory === "" ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-300 hover:border-black"}`}
           >
-            MUA SẮM NGAY
-          </Link>
-        </div>
-      </div>
-
-      {/* 2. LỢI ÍCH KHÁCH HÀNG (Icons) */}
-      <div className="max-w-6xl mx-auto py-12 px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center border-b">
-        <div>
-          <div className="text-3xl mb-2">🚀</div>
-          <h3 className="font-bold text-lg">Giao hàng miễn phí</h3>
-          <p className="text-gray-500 text-sm">Cho đơn hàng trên 500k</p>
-        </div>
-        <div>
-          <div className="text-3xl mb-2">↩️</div>
-          <h3 className="font-bold text-lg">Đổi trả dễ dàng</h3>
-          <p className="text-gray-500 text-sm">Trong vòng 30 ngày</p>
-        </div>
-        <div>
-          <div className="text-3xl mb-2">🛡️</div>
-          <h3 className="font-bold text-lg">Bảo mật thanh toán</h3>
-          <p className="text-gray-500 text-sm">An toàn tuyệt đối</p>
-        </div>
-      </div>
-
-      {/* 3. SẢN PHẨM MỚI (Featured) */}
-      <div className="max-w-6xl mx-auto py-16 px-6">
-        <div className="flex justify-between items-end mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Sản phẩm mới</h2>
-          <Link
-            to="/products"
-            className="text-blue-600 hover:underline font-medium"
-          >
-            Xem tất cả →
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {featuredProducts.map((p) => (
-            <Link to={`/products/${p._id}`} key={p._id} className="group">
-              <div className="border rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition duration-300 bg-white">
-                <div className="relative overflow-hidden h-64">
-                  <img
-                    src={p.image || "https://via.placeholder.com/300"}
-                    className="w-full h-full object-cover transform group-hover:scale-110 transition duration-700"
-                    alt={p.name}
-                  />
-                  {/* Nhãn "New" */}
-                  <div className="absolute top-2 left-2 bg-black text-white text-xs font-bold px-2 py-1 uppercase rounded">
-                    New
-                  </div>
-                </div>
-
-                <div className="p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                    {p.category?.name || "Fashion"}
-                  </p>
-                  <h3 className="font-bold text-lg text-gray-900 truncate group-hover:text-blue-600 transition">
-                    {p.name}
-                  </h3>
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="text-red-600 font-bold">
-                      {new Intl.NumberFormat("vi-VN", {
-                        style: "currency",
-                        currency: "VND",
-                      }).format(p.price)}
-                    </p>
-                    <span className="text-xs text-white bg-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition">
-                      Mua ngay
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Link>
+            Tất cả
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat._id}
+              onClick={() => setSelectedCategory(cat._id)}
+              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap border transition
+                ${selectedCategory === cat._id ? "bg-black text-white border-black" : "bg-white text-gray-600 border-gray-300 hover:border-black"}`}
+            >
+              {cat.name}
+            </button>
           ))}
         </div>
+
+        {/* Ô Tìm kiếm */}
+        <form onSubmit={handleSearch} className="flex gap-2 w-full md:w-1/3">
+          <input
+            type="text"
+            placeholder="Tìm kiếm sản phẩm..."
+            className="w-full border border-gray-300 px-4 py-2 rounded focus:outline-none focus:border-black"
+            ref={searchInputRef}
+            onChange={handleInputChange}
+          />
+          <button
+            type="submit"
+            className="bg-black text-white px-6 py-2 rounded font-bold hover:bg-gray-800 transition"
+          >
+            Tìm
+          </button>
+        </form>
       </div>
 
-      {/* 4. BANNER KHUYẾN MÃI PHỤ */}
-      <div className="bg-gray-100 py-16 text-center px-4">
-        <h2 className="text-3xl font-bold mb-4">Đăng ký thành viên</h2>
-        <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-          Trở thành thành viên của FashionShop để nhận ưu đãi độc quyền và tích
-          điểm đổi quà.
-        </p>
-        <Link
-          to="/register"
-          className="border-2 border-black text-black px-8 py-3 rounded hover:bg-black hover:text-white transition font-bold"
-        >
-          ĐĂNG KÝ NGAY
-        </Link>
-      </div>
+      {/* --- DANH SÁCH SẢN PHẨM --- */}
+      {loading ? (
+        <div className="text-center py-20">Đang tải sản phẩm... ⏳</div>
+      ) : products.length === 0 ? (
+        <div className="text-center py-20">
+          <h2 className="text-xl font-bold text-gray-500">
+            Không tìm thấy sản phẩm nào! 😢
+          </h2>
+          <button
+            onClick={handleReset}
+            className="mt-4 text-blue-600 underline"
+          >
+            Xem tất cả sản phẩm
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {products.map((product) => (
+            <div
+              key={product._id}
+              className="group border rounded-lg overflow-hidden hover:shadow-lg transition bg-white flex flex-col"
+            >
+              <Link
+                to={`/products/${product._id}`}
+                className="block overflow-hidden relative h-64"
+              >
+                <img
+                  src={product.image || "https://via.placeholder.com/300"}
+                  alt={product.name}
+                  className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
+                />
+                {product.countInStock === 0 && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold">
+                    HẾT HÀNG
+                  </div>
+                )}
+              </Link>
+
+              <div className="p-4 flex flex-col flex-1">
+                <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">
+                  {product.category?.name || "Uncategorized"}
+                </p>
+
+                <Link to={`/products/${product._id}`}>
+                  <h3 className="font-bold text-lg mb-1 truncate group-hover:text-blue-600 transition">
+                    {product.name}
+                  </h3>
+                </Link>
+
+                {/* 👇 ĐOẠN MỚI THÊM: HIỂN THỊ MÔ TẢ 👇 */}
+                <p className="text-sm text-gray-500 mb-3 line-clamp-2 min-h-[40px]">
+                  {product.description || "Sản phẩm chưa có mô tả."}
+                </p>
+                {/* 👆 ------------------------------- 👆 */}
+
+                {/* Dùng mt-auto để đẩy giá và nút mua xuống đáy thẻ */}
+                <div className="flex justify-between items-center mt-auto border-t pt-3">
+                  <span className="text-red-600 font-bold text-lg">
+                    {new Intl.NumberFormat("vi-VN", {
+                      style: "currency",
+                      currency: "VND",
+                    }).format(product.price)}
+                  </span>
+
+                  <button
+                    onClick={() => addToCart(product)}
+                    disabled={product.countInStock === 0}
+                    className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-black hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Thêm vào giỏ"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

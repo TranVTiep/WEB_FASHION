@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify"; // 👈 Import toast
+import { toast } from "react-toastify";
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
@@ -23,7 +23,7 @@ export default function AdminProducts() {
 
   useEffect(() => {
     if (user && user.role !== "admin") {
-      toast.error("Bạn không có quyền truy cập! ⛔"); // 👈 Báo lỗi
+      toast.error("Bạn không có quyền truy cập! ⛔");
       navigate("/");
     }
   }, [user, navigate]);
@@ -95,7 +95,6 @@ export default function AdminProducts() {
       image: product.image,
       category: product.category?._id || product.category || "",
     });
-    // Cuộn lên đầu trang để sửa cho dễ
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -182,7 +181,11 @@ export default function AdminProducts() {
           <div className="flex gap-2 pt-2">
             <button
               type="submit"
-              className={`flex-1 text-white py-2 rounded font-bold ${isEditing ? "bg-yellow-500 hover:bg-yellow-600" : "bg-green-600 hover:bg-green-700"}`}
+              className={`flex-1 text-white py-2 rounded font-bold ${
+                isEditing
+                  ? "bg-yellow-500 hover:bg-yellow-600"
+                  : "bg-green-600 hover:bg-green-700"
+              }`}
             >
               {isEditing ? "Cập nhật" : "Thêm mới"}
             </button>
@@ -227,6 +230,13 @@ export default function AdminProducts() {
 
               <div className="flex-1">
                 <h3 className="font-bold text-lg">{p.name}</h3>
+
+                {/* 👇 ĐÃ THÊM PHẦN HIỂN THỊ MÔ TẢ TẠI ĐÂY 👇 */}
+                <p className="text-gray-500 text-sm mt-1 mb-2 line-clamp-2">
+                  {p.description || "Chưa có mô tả"}
+                </p>
+                {/* 👆 ----------------------------------- 👆 */}
+
                 <p className="text-red-600 font-bold">
                   {new Intl.NumberFormat("vi-VN", {
                     style: "currency",

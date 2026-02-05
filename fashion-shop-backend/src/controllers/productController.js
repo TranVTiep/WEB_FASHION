@@ -10,10 +10,30 @@ export const createProduct = async (req, res) => {
   }
 };
 
-// GET ALL
+// GET ALL (Đã nâng cấp: Hỗ trợ Tìm kiếm & Lọc)
 export const getProducts = async (req, res) => {
   try {
-    const products = await Product.find().populate("category");
+    // 1. Lấy tham số từ URL (VD: ?keyword=ao&category=abc...)
+    const { keyword, category } = req.query;
+
+    // 2. Tạo bộ lọc rỗng ban đầu
+    let query = {};
+
+    // 3. Nếu có từ khóa -> Thêm điều kiện tìm tên (Regex: tìm gần đúng, không phân biệt hoa thường)
+    if (keyword) {
+      query.name = { $regex: keyword, $options: "i" };
+    }
+
+    // 4. Nếu có danh mục -> Thêm điều kiện lọc danh mục
+    if (category) {
+      query.category = category;
+    }
+
+    // 5. Truy vấn Database với bộ lọc trên
+    const products = await Product.find(query)
+      .populate("category")
+      .sort({ createdAt: -1 }); // Sắp xếp sản phẩm mới nhất lên đầu
+
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
