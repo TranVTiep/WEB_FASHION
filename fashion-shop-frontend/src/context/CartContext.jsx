@@ -1,15 +1,15 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/axios";
 import { toast } from "react-toastify";
-import { useAuth } from "./AuthContext"; // 👈 1. Import AuthContext
+import { useAuth } from "./AuthContext";
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-  const { user } = useAuth(); // 👈 2. Lấy user từ AuthContext
+  const { user } = useAuth();
   const [cart, setCart] = useState([]);
 
-  // State lưu danh sách ID các sản phẩm được chọn
+  // State lưu danh sách ID các sản phẩm được chọn (để thanh toán sau này)
   const [selectedItems, setSelectedItems] = useState([]);
 
   const fetchCart = async () => {
@@ -22,23 +22,35 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // 👇 3. SỬA ĐOẠN NÀY: Chỉ fetch khi có user
   useEffect(() => {
     if (user) {
       fetchCart();
     } else {
-      // Nếu chưa đăng nhập (hoặc vừa đăng xuất), xóa sạch giỏ hàng trên UI
       setCart([]);
       setSelectedItems([]);
     }
-  }, [user]); // Chạy lại mỗi khi trạng thái đăng nhập thay đổi
+  }, [user]);
 
+  // 👇 1. SỬA HÀM ADD: THÊM CHECK TỒN KHO
   const addToCart = async (product, quantity = 1) => {
-    // Chặn ngay từ client nếu chưa đăng nhập
     if (!user) {
       toast.info("Vui lòng đăng nhập để mua hàng! 🔒");
       return;
     }
+
+    // --- LOGIC KIỂM TRA TỒN KHO MỚI ---
+    // Tìm xem sản phẩm này đã có trong giỏ chưa
+    const existingItem = cart.find((item) => item.product._id === product._id);
+    const currentQty = existingItem ? existingItem.quantity : 0;
+    const newQty = currentQty + quantity;
+
+    // Kiểm tra số lượng tồn kho (nếu có thông tin stock)
+    // Lưu ý: product.stock lấy từ trang ProductDetail/Home truyền vào
+    if (product.stock !== undefined && newQty > product.stock) {
+      toast.warning(`Chỉ còn ${product.stock} sản phẩm trong kho! 😅`);
+      return; // Dừng lại, không gọi API
+    }
+    // ----------------------------------
 
     try {
       await api.post("/cart", { productId: product._id, quantity });
@@ -51,8 +63,25 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  // 👇 2. SỬA HÀM UPDATE: THÊM CHECK TỒN KHO
   const updateQuantity = async (productId, newQuantity) => {
     if (newQuantity < 1) return;
+
+    // --- LOGIC KIỂM TRA TỒN KHO MỚI ---
+    const itemToUpdate = cart.find(
+      (item) => item.product._id === productId || item.product === productId,
+    );
+
+    if (itemToUpdate) {
+      const stock = itemToUpdate.product.stock || 0;
+      // Nếu số lượng mới lớn hơn tồn kho -> Chặn luôn
+      if (newQuantity > stock) {
+        toast.warning(`Kho chỉ còn ${stock} cái thôi!`);
+        return;
+      }
+    }
+    // ----------------------------------
+
     try {
       // Cập nhật UI ngay lập tức (Optimistic update)
       setCart((prev) =>
@@ -72,37 +101,31 @@ export const CartProvider = ({ children }) => {
 
   const removeFromCart = async (id) => {
     try {
-      // Xóa khỏi danh sách đang chọn
       setSelectedItems((prev) => prev.filter((itemId) => itemId !== id));
 
-      // Xóa khỏi UI ngay lập tức
       setCart((prev) =>
         prev.filter((item) => (item.product._id || item._id) !== id),
       );
 
       await api.delete(`/cart/${id}`);
-      // Không cần gọi fetchCart() lại cũng được nếu muốn nhanh,
-      // nhưng gọi lại để đồng bộ giá tiền tổng server tính toán thì tốt hơn.
       fetchCart();
       toast.success("Đã xóa sản phẩm! 🗑️");
     } catch (err) {
       toast.error("Lỗi xóa sản phẩm");
-      fetchCart(); // Revert lại nếu lỗi
+      fetchCart();
     }
   };
 
-  // Tích chọn từng cái
   const toggleSelectItem = (productId) => {
     setSelectedItems((prev) => {
       if (prev.includes(productId)) {
-        return prev.filter((id) => id !== productId); // Bỏ chọn
+        return prev.filter((id) => id !== productId);
       } else {
-        return [...prev, productId]; // Chọn thêm
+        return [...prev, productId];
       }
     });
   };
 
-  // Chọn tất cả / Bỏ chọn tất cả
   const selectAllItems = (isChecked) => {
     if (isChecked) {
       const allIds = cart.map((item) => item.product._id);
