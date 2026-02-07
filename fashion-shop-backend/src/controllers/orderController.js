@@ -1,5 +1,5 @@
 import Order from "../models/Order.js";
-import Product from "../models/Product.js"; // 👈 Quan trọng: Import để thao tác với kho
+import Product from "../models/Product.js";
 
 // 1. Tạo đơn hàng mới (CÓ TRỪ KHO)
 export const createOrder = async (req, res) => {
@@ -17,7 +17,6 @@ export const createOrder = async (req, res) => {
     }
 
     // 👇 BƯỚC 1: KIỂM TRA TỒN KHO
-    // Phải đảm bảo tất cả sản phẩm đều đủ hàng trước khi tạo đơn
     for (const item of items) {
       const productId = item.product._id || item.product;
       const quantity = item.qty || item.quantity;
@@ -40,7 +39,7 @@ export const createOrder = async (req, res) => {
       const quantity = item.qty || item.quantity;
 
       const productDB = await Product.findById(productId);
-      productDB.stock = productDB.stock - quantity; // Trừ đi số lượng mua
+      productDB.stock = productDB.stock - quantity;
       await productDB.save();
     }
 
@@ -54,7 +53,7 @@ export const createOrder = async (req, res) => {
       })),
       totalPrice: total,
       shippingAddress: { address, phone },
-      status: "Pending",
+      status: "pending", // ✅ Đã chuẩn (chữ thường)
     });
 
     const savedOrder = await newOrder.save();
@@ -81,7 +80,6 @@ export const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find({})
       .populate("user", "name email")
-      // 👇 THÊM DÒNG NÀY ĐỂ LẤY ẢNH VÀ TÊN SẢN PHẨM 👇
       .populate("items.product", "name image price")
       .sort({ createdAt: -1 });
 
@@ -120,14 +118,15 @@ export const cancelOrder = async (req, res) => {
         .json({ message: "Bạn không có quyền hủy đơn này" });
     }
 
-    if (order.status !== "Pending" && order.status !== "Chờ xử lý") {
+    // 👇 SỬA LỖI LOGIC QUAN TRỌNG TẠI ĐÂY:
+    // Chỉ cho hủy khi status là "pending" (chữ thường)
+    if (order.status !== "pending") {
       return res
         .status(400)
-        .json({ message: "Đơn hàng đang giao, không thể hủy!" });
+        .json({ message: "Đơn hàng đang giao hoặc đã xong, không thể hủy!" });
     }
 
-    // 👇 LOGIC MỚI: CỘNG LẠI KHO KHI HỦY
-    // Khi khách hủy đơn, phải trả lại hàng vào kho để người khác mua
+    // 👇 LOGIC HOÀN KHO (Giữ nguyên vì đã tốt)
     for (const item of order.items) {
       const product = await Product.findById(item.product);
       if (product) {
@@ -136,7 +135,9 @@ export const cancelOrder = async (req, res) => {
       }
     }
 
-    order.status = "Cancelled";
+    // 👇 SỬA LẠI TRẠNG THÁI CHO ĐÚNG ENUM (chữ thường)
+    order.status = "cancelled";
+
     const updatedOrder = await order.save();
     res.json(updatedOrder);
   } catch (error) {

@@ -14,7 +14,7 @@ export default function AdminProducts() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
 
-  // Form data dùng 'stock' như code gốc của bạn
+  // Form data
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -48,11 +48,10 @@ export default function AdminProducts() {
     fetchCategories();
   }, []);
 
-  // 3. Hàm tải sản phẩm (QUAN TRỌNG)
+  // 3. Hàm tải sản phẩm
   const fetchProducts = async (pageNumber) => {
     try {
       const res = await api.get(`/products?pageNumber=${pageNumber}`);
-      console.log("Dữ liệu products từ API:", res.data); // 👇 Kiểm tra log này nếu lỗi
 
       // Xử lý dữ liệu phân trang
       if (res.data.products) {
@@ -60,7 +59,6 @@ export default function AdminProducts() {
         setPages(res.data.pages);
         setPage(res.data.page);
       } else {
-        // Fallback nếu API chưa phân trang
         setProducts(Array.isArray(res.data) ? res.data : []);
       }
     } catch (err) {
@@ -69,7 +67,6 @@ export default function AdminProducts() {
     }
   };
 
-  // Gọi mỗi khi đổi trang
   useEffect(() => {
     fetchProducts(page);
   }, [page]);
@@ -78,7 +75,41 @@ export default function AdminProducts() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Xử lý Submit (Thêm/Sửa)
+  // --- 4. XỬ LÝ NHẬP EXCEL (MỚI) ---
+  const handleImportExcel = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const importFormData = new FormData();
+    importFormData.append("file", file);
+
+    try {
+      // Thông báo đang xử lý
+      toast.info("Đang đọc file Excel, vui lòng chờ... ⏳");
+
+      await api.post("/upload/import", importFormData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // Thông báo thành công
+      toast.success("Nhập sản phẩm từ Excel thành công! 🎉");
+
+      // Reset file input
+      e.target.value = null;
+
+      // Load lại trang 1 để thấy sản phẩm mới
+      setPage(1);
+      fetchProducts(1);
+    } catch (err) {
+      console.error(err);
+      // Thông báo lỗi chi tiết từ Backend trả về
+      const errorMsg = err.response?.data?.message || "Lỗi nhập file Excel!";
+      toast.error(errorMsg + " ❌");
+      e.target.value = null;
+    }
+  };
+
+  // Xử lý Submit Form
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.category) {
@@ -89,26 +120,23 @@ export default function AdminProducts() {
     const submitData = {
       ...formData,
       price: parseInt(formData.price) || 0,
-      stock: parseInt(formData.stock) || 0, // Dùng stock
+      stock: parseInt(formData.stock) || 0,
     };
 
     try {
       if (isEditing) {
-        // --- CẬP NHẬT ---
         await api.put(`/products/${currentProduct._id}`, submitData);
         toast.success("Cập nhật thành công!");
       } else {
-        // --- THÊM MỚI ---
         await api.post("/products", submitData);
         toast.success("Thêm mới thành công!");
-        setPage(1); // Về trang 1 khi thêm mới
+        setPage(1);
       }
 
-      // Reset form và TẢI LẠI DỮ LIỆU TỪ SERVER (Cho chắc chắn)
       resetForm();
       setIsEditing(false);
       setCurrentProduct(null);
-      fetchProducts(page); // Load lại danh sách mới nhất
+      fetchProducts(page);
     } catch (err) {
       console.error(err);
       toast.error("Có lỗi xảy ra, vui lòng thử lại!");
@@ -129,11 +157,8 @@ export default function AdminProducts() {
   const handleEdit = (product) => {
     setIsEditing(true);
     setCurrentProduct(product);
-
-    // Ưu tiên lấy stock, phòng hờ DB dùng countInStock thì lấy countInStock
     const realStock =
       product.stock !== undefined ? product.stock : product.countInStock || 0;
-
     setFormData({
       name: product.name,
       price: product.price,
@@ -150,8 +175,6 @@ export default function AdminProducts() {
       try {
         await api.delete(`/products/${id}`);
         toast.success("Đã xóa sản phẩm");
-
-        // Load lại trang
         if (products.length === 1 && page > 1) {
           setPage(page - 1);
         } else {
@@ -172,15 +195,11 @@ export default function AdminProducts() {
     if (newStock < 0) return;
 
     try {
-      // Gửi request cập nhật lên Server
-      // Gửi cả stock và countInStock để đảm bảo backend nhận được đúng field nó cần
       await api.put(`/products/${product._id}`, {
         ...product,
         stock: newStock,
         countInStock: newStock,
       });
-
-      // Load lại dữ liệu thật từ Server
       fetchProducts(page);
     } catch (error) {
       toast.error("Lỗi cập nhật kho!");
@@ -190,109 +209,141 @@ export default function AdminProducts() {
   return (
     <div className="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
       {/* --- CỘT TRÁI: FORM --- */}
-      <div className="md:col-span-1 bg-white p-6 rounded shadow border h-fit sticky top-24">
-        <h2 className="text-xl font-bold mb-4 text-gray-800">
-          {isEditing ? "Sửa sản phẩm" : "Thêm sản phẩm mới"}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium">Tên sản phẩm</label>
-            <input
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full border p-2 rounded focus:border-blue-500 outline-none"
-              required
-            />
-          </div>
+      <div className="md:col-span-1 space-y-4 sticky top-24 h-fit">
+        {/* 🔥 NÚT IMPORT EXCEL (MỚI) */}
+        <div className="bg-white p-4 rounded shadow border border-green-200">
+          <h3 className="font-bold text-gray-700 mb-2 text-sm uppercase">
+            Nhập hàng nhanh
+          </h3>
+          <input
+            type="file"
+            id="import-excel"
+            hidden
+            accept=".xlsx, .xls"
+            onChange={handleImportExcel}
+          />
+          <label
+            htmlFor="import-excel"
+            className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold cursor-pointer transition shadow-sm"
+          >
+            📂 Nhập từ Excel
+          </label>
+          <p className="text-xs text-gray-400 text-center mt-2">
+            Hỗ trợ file .xlsx, .xls
+          </p>
+        </div>
 
-          <div className="grid grid-cols-2 gap-2">
+        {/* FORM NHẬP TAY */}
+        <div className="bg-white p-6 rounded shadow border">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">
+            {isEditing ? "Sửa sản phẩm" : "Thêm sản phẩm mới"}
+          </h2>
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-sm font-medium">Giá (VNĐ)</label>
+              <label className="block text-sm font-medium">Tên sản phẩm</label>
               <input
-                name="price"
-                type="number"
-                value={formData.price}
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
                 className="w-full border p-2 rounded focus:border-blue-500 outline-none"
                 required
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-sm font-medium">Giá (VNĐ)</label>
+                <input
+                  name="price"
+                  type="number"
+                  value={formData.price}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded focus:border-blue-500 outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Tồn kho</label>
+                <input
+                  name="stock"
+                  type="number"
+                  value={formData.stock}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded focus:border-blue-500 outline-none font-bold text-red-600"
+                  min="0"
+                  required
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium">Tồn kho</label>
+              <label className="block text-sm font-medium">
+                Link ảnh (URL)
+              </label>
               <input
-                name="stock"
-                type="number"
-                value={formData.stock}
+                name="image"
+                value={formData.image}
                 onChange={handleChange}
-                className="w-full border p-2 rounded focus:border-blue-500 outline-none font-bold text-red-600"
-                min="0"
-                required
+                className="w-full border p-2 rounded focus:border-blue-500 outline-none"
+                placeholder="https://..."
               />
             </div>
-          </div>
+            <div>
+              <label className="block text-sm font-medium">Mô tả</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:border-blue-500 outline-none"
+                rows="3"
+              ></textarea>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium">Link ảnh (URL)</label>
-            <input
-              name="image"
-              value={formData.image}
-              onChange={handleChange}
-              className="w-full border p-2 rounded focus:border-blue-500 outline-none"
-              placeholder="https://..."
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Mô tả</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className="w-full border p-2 rounded focus:border-blue-500 outline-none"
-              rows="3"
-            ></textarea>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Danh mục</label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              className="w-full border p-2 rounded bg-white outline-none"
-              required
-            >
-              <option value="">-- Chọn danh mục --</option>
-              {categories.map((cat) => (
-                <option key={cat._id} value={cat._id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              type="submit"
-              className={`flex-1 text-white py-2 rounded font-bold transition shadow-md ${isEditing ? "bg-yellow-500 hover:bg-yellow-600" : "bg-green-600 hover:bg-green-700"}`}
-            >
-              {isEditing ? "Cập nhật" : "Thêm mới"}
-            </button>
-            {isEditing && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditing(false);
-                  resetForm();
-                  setCurrentProduct(null);
-                }}
-                className="bg-gray-300 px-3 rounded text-gray-700 hover:bg-gray-400 transition"
+            <div>
+              <label className="block text-sm font-medium">Danh mục</label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full border p-2 rounded bg-white outline-none"
+                required
               >
-                Hủy
+                <option value="">-- Chọn danh mục --</option>
+                {categories.map((cat) => (
+                  <option key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="submit"
+                className={`flex-1 text-white py-2 rounded font-bold transition shadow-md ${
+                  isEditing
+                    ? "bg-yellow-500 hover:bg-yellow-600"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                {isEditing ? "Cập nhật" : "Thêm mới"}
               </button>
-            )}
-          </div>
-        </form>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    resetForm();
+                    setCurrentProduct(null);
+                  }}
+                  className="bg-gray-300 px-3 rounded text-gray-700 hover:bg-gray-400 transition"
+                >
+                  Hủy
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
       </div>
 
       {/* --- CỘT PHẢI: DANH SÁCH --- */}
@@ -308,10 +359,8 @@ export default function AdminProducts() {
 
         <div className="grid grid-cols-1 gap-4">
           {products.map((p) => {
-            // Logic hiển thị an toàn: Ưu tiên stock, nếu không có thì tìm countInStock
             const displayStock =
               p.stock !== undefined ? p.stock : p.countInStock || 0;
-
             return (
               <div
                 key={p._id}

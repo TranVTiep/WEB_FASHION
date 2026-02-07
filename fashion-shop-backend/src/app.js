@@ -8,6 +8,8 @@ import productRoutes from "./routes/productRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 dotenv.config();
 connectDB();
 
@@ -22,6 +24,8 @@ app.use("/api/products", productRoutes); // Product management routes
 app.use("/api/cart", cartRoutes); // Cart management routes
 app.use("/api/orders", orderRoutes); // Order management routes
 app.use("/api/users", userRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/upload", uploadRoutes);
 app.get("/", (req, res) => {
   res.send("API running...");
 });
