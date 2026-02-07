@@ -10,6 +10,11 @@ export default function AdminProducts() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(null);
 
+  // State phân trang
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+
+  // Form data dùng 'stock' như code gốc của bạn
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -22,131 +27,120 @@ export default function AdminProducts() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Kiểm tra quyền Admin
+  // 1. Kiểm tra quyền
   useEffect(() => {
     if (user && user.role !== "admin") {
-      toast.error("Bạn không có quyền truy cập! ⛔");
+      toast.error("Bạn không có quyền truy cập!");
       navigate("/");
     }
   }, [user, navigate]);
 
-  // Tải dữ liệu ban đầu
-  const fetchData = async () => {
+  // 2. Tải danh mục
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get("/categories");
+        setCategories(res.data);
+      } catch (err) {
+        console.error("Lỗi tải danh mục:", err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // 3. Hàm tải sản phẩm (QUAN TRỌNG)
+  const fetchProducts = async (pageNumber) => {
     try {
-      const [resProducts, resCats] = await Promise.all([
-        api.get("/products"),
-        api.get("/categories"),
-      ]);
-      setProducts(
-        Array.isArray(resProducts.data)
-          ? resProducts.data
-          : resProducts.data.products || [],
-      );
-      setCategories(resCats.data);
+      const res = await api.get(`/products?pageNumber=${pageNumber}`);
+      console.log("Dữ liệu products từ API:", res.data); // 👇 Kiểm tra log này nếu lỗi
+
+      // Xử lý dữ liệu phân trang
+      if (res.data.products) {
+        setProducts(res.data.products);
+        setPages(res.data.pages);
+        setPage(res.data.page);
+      } else {
+        // Fallback nếu API chưa phân trang
+        setProducts(Array.isArray(res.data) ? res.data : []);
+      }
     } catch (err) {
-      console.error("Lỗi tải dữ liệu:", err);
+      console.error("Lỗi tải sản phẩm:", err);
+      toast.error("Không tải được danh sách sản phẩm");
     }
   };
 
+  // Gọi mỗi khi đổi trang
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchProducts(page);
+  }, [page]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 👇 XỬ LÝ SUBMIT FORM (Đã sửa lỗi Uncategorized)
-  // 👇 XỬ LÝ SUBMIT FORM (Phiên bản Siêu Tốc - Optimistic UI)
+  // Xử lý Submit (Thêm/Sửa)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.category) {
-      toast.warning("Vui lòng chọn danh mục! ⚠️");
+      toast.warning("Vui lòng chọn danh mục!");
       return;
     }
 
-    // 1. Chuẩn bị dữ liệu chuẩn
     const submitData = {
       ...formData,
       price: parseInt(formData.price) || 0,
-      stock: parseInt(formData.stock) || 0,
+      stock: parseInt(formData.stock) || 0, // Dùng stock
     };
-
-    // 2. Tìm object danh mục để hiển thị UI ngay (Fix lỗi Uncategorized)
-    const selectedCategoryObj = categories.find(
-      (c) => c._id === formData.category,
-    );
-
-    // Lưu lại dữ liệu cũ để phòng trường hợp lỗi thì hoàn tác (Rollback)
-    const previousProducts = [...products];
 
     try {
       if (isEditing) {
-        // --- CẬP NHẬT (Optimistic) ---
-        // A. Tạo object hiển thị giả lập (như thật)
-        const optimisticProduct = {
-          ...currentProduct, // Giữ ID và các trường cũ
-          ...submitData, // Ghi đè thông tin mới
-          category: selectedCategoryObj, // Gán object category để hiển thị tên
-        };
-
-        // B. Cập nhật giao diện NGAY LẬP TỨC (Không chờ Server)
-        setProducts((prev) =>
-          prev.map((p) =>
-            p._id === currentProduct._id ? optimisticProduct : p,
-          ),
-        );
-
-        // C. Đóng form và reset ngay cho mượt
-        setIsEditing(false);
-        setCurrentProduct(null);
-        setFormData({
-          name: "",
-          price: "",
-          description: "",
-          image: "",
-          category: "",
-          stock: 0,
-        });
-        toast.success("Cập nhật thành công! (Đang đồng bộ...)");
-
-        // D. Gọi API ngầm bên dưới
+        // --- CẬP NHẬT ---
         await api.put(`/products/${currentProduct._id}`, submitData);
+        toast.success("Cập nhật thành công!");
       } else {
-        // --- THÊM MỚI (Vẫn phải chờ Server để lấy ID mới) ---
-        const res = await api.post("/products", submitData);
-        const newProductUI = { ...res.data, category: selectedCategoryObj };
-        setProducts((prev) => [newProductUI, ...prev]);
-
-        // Reset form
-        setFormData({
-          name: "",
-          price: "",
-          description: "",
-          image: "",
-          category: "",
-          stock: 0,
-        });
-        toast.success("Thêm mới thành công! 🎉");
+        // --- THÊM MỚI ---
+        await api.post("/products", submitData);
+        toast.success("Thêm mới thành công!");
+        setPage(1); // Về trang 1 khi thêm mới
       }
+
+      // Reset form và TẢI LẠI DỮ LIỆU TỪ SERVER (Cho chắc chắn)
+      resetForm();
+      setIsEditing(false);
+      setCurrentProduct(null);
+      fetchProducts(page); // Load lại danh sách mới nhất
     } catch (err) {
       console.error(err);
-      toast.error("Lỗi kết nối! Đang hoàn tác dữ liệu... ❌");
-      // Nếu lỗi thì trả lại danh sách cũ
-      setProducts(previousProducts);
+      toast.error("Có lỗi xảy ra, vui lòng thử lại!");
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      price: "",
+      description: "",
+      image: "",
+      category: "",
+      stock: 0,
+    });
   };
 
   const handleEdit = (product) => {
     setIsEditing(true);
     setCurrentProduct(product);
+
+    // Ưu tiên lấy stock, phòng hờ DB dùng countInStock thì lấy countInStock
+    const realStock =
+      product.stock !== undefined ? product.stock : product.countInStock || 0;
+
     setFormData({
       name: product.name,
       price: product.price,
       description: product.description,
       image: product.image,
       category: product.category?._id || product.category || "",
-      stock: product.stock || 0,
+      stock: realStock,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -155,47 +149,47 @@ export default function AdminProducts() {
     if (window.confirm("Bạn chắc chắn muốn xóa?")) {
       try {
         await api.delete(`/products/${id}`);
-        // Xóa ngay khỏi danh sách hiển thị
-        setProducts((prev) => prev.filter((p) => p._id !== id));
-        toast.success("Đã xóa sản phẩm 🗑️");
+        toast.success("Đã xóa sản phẩm");
+
+        // Load lại trang
+        if (products.length === 1 && page > 1) {
+          setPage(page - 1);
+        } else {
+          fetchProducts(page);
+        }
       } catch (err) {
-        toast.error("Lỗi xóa sản phẩm ❌");
+        toast.error("Lỗi xóa sản phẩm");
       }
     }
   };
 
-  // 👇 XỬ LÝ CẬP NHẬT KHO NHANH (Optimistic UI)
   const handleQuickStock = async (product, amount) => {
-    const currentStock = parseInt(product.stock || 0);
+    const currentStock = parseInt(
+      product.stock !== undefined ? product.stock : product.countInStock || 0,
+    );
     const newStock = currentStock + amount;
 
-    if (newStock < 0) return; // Không cho âm
+    if (newStock < 0) return;
 
-    // 1. Cập nhật giao diện NGAY LẬP TỨC
-    setProducts((prev) =>
-      prev.map((p) => (p._id === product._id ? { ...p, stock: newStock } : p)),
-    );
-
-    // 2. Gọi API ngầm bên dưới
     try {
+      // Gửi request cập nhật lên Server
+      // Gửi cả stock và countInStock để đảm bảo backend nhận được đúng field nó cần
       await api.put(`/products/${product._id}`, {
         ...product,
         stock: newStock,
+        countInStock: newStock,
       });
+
+      // Load lại dữ liệu thật từ Server
+      fetchProducts(page);
     } catch (error) {
-      // Nếu lỗi thì hoàn tác lại số cũ
-      setProducts((prev) =>
-        prev.map((p) =>
-          p._id === product._id ? { ...p, stock: currentStock } : p,
-        ),
-      );
-      toast.error("Lỗi cập nhật kho! Đã hoàn tác.");
+      toast.error("Lỗi cập nhật kho!");
     }
   };
 
   return (
     <div className="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
-      {/* --- CỘT TRÁI: FORM NHẬP LIỆU --- */}
+      {/* --- CỘT TRÁI: FORM --- */}
       <div className="md:col-span-1 bg-white p-6 rounded shadow border h-fit sticky top-24">
         <h2 className="text-xl font-bold mb-4 text-gray-800">
           {isEditing ? "Sửa sản phẩm" : "Thêm sản phẩm mới"}
@@ -265,7 +259,7 @@ export default function AdminProducts() {
               name="category"
               value={formData.category}
               onChange={handleChange}
-              className="w-full border p-2 rounded bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full border p-2 rounded bg-white outline-none"
               required
             >
               <option value="">-- Chọn danh mục --</option>
@@ -280,11 +274,7 @@ export default function AdminProducts() {
           <div className="flex gap-2 pt-2">
             <button
               type="submit"
-              className={`flex-1 text-white py-2 rounded font-bold transition shadow-md ${
-                isEditing
-                  ? "bg-yellow-500 hover:bg-yellow-600"
-                  : "bg-green-600 hover:bg-green-700"
-              }`}
+              className={`flex-1 text-white py-2 rounded font-bold transition shadow-md ${isEditing ? "bg-yellow-500 hover:bg-yellow-600" : "bg-green-600 hover:bg-green-700"}`}
             >
               {isEditing ? "Cập nhật" : "Thêm mới"}
             </button>
@@ -293,14 +283,7 @@ export default function AdminProducts() {
                 type="button"
                 onClick={() => {
                   setIsEditing(false);
-                  setFormData({
-                    name: "",
-                    price: "",
-                    description: "",
-                    image: "",
-                    category: "",
-                    stock: 0,
-                  });
+                  resetForm();
                   setCurrentProduct(null);
                 }}
                 className="bg-gray-300 px-3 rounded text-gray-700 hover:bg-gray-400 transition"
@@ -312,94 +295,126 @@ export default function AdminProducts() {
         </form>
       </div>
 
-      {/* --- CỘT PHẢI: DANH SÁCH SẢN PHẨM --- */}
+      {/* --- CỘT PHẢI: DANH SÁCH --- */}
       <div className="md:col-span-2">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800 border-l-4 border-blue-600 pl-4">
-          Danh sách sản phẩm
-        </h1>
+        <div className="flex justify-between items-center mb-6 border-l-4 border-blue-600 pl-4">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Danh sách sản phẩm
+          </h1>
+          <span className="text-sm font-semibold bg-gray-100 px-3 py-1 rounded">
+            Trang {page} / {pages}
+          </span>
+        </div>
+
         <div className="grid grid-cols-1 gap-4">
-          {products.map((p) => (
-            <div
-              key={p._id}
-              className="flex items-center bg-white border p-4 rounded shadow-sm hover:shadow-md transition"
-            >
-              <img
-                src={p.image || "https://via.placeholder.com/80"}
-                className="w-20 h-20 object-cover rounded border mr-4 bg-gray-100"
-                alt=""
-                onError={(e) =>
-                  (e.target.src = "https://via.placeholder.com/80")
-                }
-              />
+          {products.map((p) => {
+            // Logic hiển thị an toàn: Ưu tiên stock, nếu không có thì tìm countInStock
+            const displayStock =
+              p.stock !== undefined ? p.stock : p.countInStock || 0;
 
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-lg">{p.name}</h3>
-                  <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                    {p.category?.name || "Uncategorized"}
-                  </span>
-                </div>
+            return (
+              <div
+                key={p._id}
+                className="flex items-center bg-white border p-4 rounded shadow-sm hover:shadow-md transition"
+              >
+                <img
+                  src={p.image || "https://via.placeholder.com/80"}
+                  className="w-20 h-20 object-cover rounded border mr-4 bg-gray-100"
+                  alt=""
+                  onError={(e) =>
+                    (e.target.src = "https://via.placeholder.com/80")
+                  }
+                />
 
-                <p className="text-gray-500 text-sm mt-1 mb-2 line-clamp-2">
-                  {p.description || "Chưa có mô tả"}
-                </p>
-
-                <div className="flex items-center gap-4 text-sm mt-2">
-                  <span className="text-red-600 font-bold text-base">
-                    {new Intl.NumberFormat("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    }).format(p.price)}
-                  </span>
-
-                  {/* 👇 NÚT CỘNG TRỪ KHO NHANH */}
-                  <div className="flex items-center border rounded overflow-hidden select-none">
-                    <button
-                      onClick={() => handleQuickStock(p, -1)}
-                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold border-r active:bg-gray-300"
-                    >
-                      -
-                    </button>
-                    <span
-                      className={`px-3 py-1 font-bold min-w-[3rem] text-center ${
-                        p.stock > 0 ? "text-green-700" : "text-red-600"
-                      }`}
-                    >
-                      {p.stock || 0}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-lg">{p.name}</h3>
+                    <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                      {p.category?.name || "Uncategorized"}
                     </span>
-                    <button
-                      onClick={() => handleQuickStock(p, 1)}
-                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold border-l active:bg-gray-300"
-                    >
-                      +
-                    </button>
+                  </div>
+
+                  <p className="text-gray-500 text-sm mt-1 mb-2 line-clamp-2">
+                    {p.description || "Chưa có mô tả"}
+                  </p>
+
+                  <div className="flex items-center gap-4 text-sm mt-2">
+                    <span className="text-red-600 font-bold text-base">
+                      {new Intl.NumberFormat("vi-VN", {
+                        style: "currency",
+                        currency: "VND",
+                      }).format(p.price)}
+                    </span>
+
+                    <div className="flex items-center border rounded overflow-hidden select-none">
+                      <button
+                        onClick={() => handleQuickStock(p, -1)}
+                        className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold border-r active:bg-gray-300"
+                      >
+                        -
+                      </button>
+                      <span
+                        className={`px-3 py-1 font-bold min-w-[3rem] text-center ${displayStock > 0 ? "text-green-700" : "text-red-600"}`}
+                      >
+                        {displayStock}
+                      </span>
+                      <button
+                        onClick={() => handleQuickStock(p, 1)}
+                        className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold border-l active:bg-gray-300"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex flex-col gap-2 ml-4">
-                <button
-                  onClick={() => handleEdit(p)}
-                  className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-200 font-medium transition"
-                >
-                  Sửa
-                </button>
-                <button
-                  onClick={() => handleDelete(p._id)}
-                  className="bg-red-100 text-red-700 px-3 py-1 rounded text-sm hover:bg-red-200 font-medium transition"
-                >
-                  Xóa
-                </button>
+                <div className="flex flex-col gap-2 ml-4">
+                  <button
+                    onClick={() => handleEdit(p)}
+                    className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-200 font-medium transition"
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    onClick={() => handleDelete(p._id)}
+                    className="bg-red-100 text-red-700 px-3 py-1 rounded text-sm hover:bg-red-200 font-medium transition"
+                  >
+                    Xóa
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {products.length === 0 && (
             <div className="text-center py-10 bg-gray-50 rounded border border-dashed">
-              <p className="text-gray-500">Chưa có sản phẩm nào.</p>
+              <p className="text-gray-500">Không tìm thấy sản phẩm.</p>
             </div>
           )}
         </div>
+
+        {/* Nút phân trang */}
+        {pages > 1 && (
+          <div className="flex justify-center mt-8 space-x-2">
+            <button
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              disabled={page === 1}
+              className={`px-4 py-2 border rounded font-bold transition ${page === 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white hover:bg-black hover:text-white"}`}
+            >
+              ← Trước
+            </button>
+            <span className="px-4 py-2 font-bold bg-gray-100 rounded text-gray-700 border">
+              {page} / {pages}
+            </span>
+            <button
+              onClick={() => setPage((prev) => Math.min(prev + 1, pages))}
+              disabled={page === pages}
+              className={`px-4 py-2 border rounded font-bold transition ${page === pages ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white hover:bg-black hover:text-white"}`}
+            >
+              Sau →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

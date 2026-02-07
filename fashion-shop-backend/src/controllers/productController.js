@@ -1,6 +1,6 @@
 import Product from "../models/Product.js";
 
-// CREATE
+// CREATE (Giữ nguyên)
 export const createProduct = async (req, res) => {
   try {
     const product = await Product.create(req.body);
@@ -10,37 +10,51 @@ export const createProduct = async (req, res) => {
   }
 };
 
-// GET ALL (Đã nâng cấp: Hỗ trợ Tìm kiếm & Lọc)
+// GET ALL (Đã nâng cấp: Tìm kiếm + Lọc + PHÂN TRANG)
 export const getProducts = async (req, res) => {
   try {
-    // 1. Lấy tham số từ URL (VD: ?keyword=ao&category=abc...)
+    // 1. Cấu hình phân trang
+    const pageSize = 8; // Số lượng sản phẩm trên 1 trang (bạn có thể đổi số này)
+    const page = Number(req.query.pageNumber) || 1; // Trang hiện tại (mặc định là 1)
+
+    // 2. Lấy tham số tìm kiếm & lọc từ URL
     const { keyword, category } = req.query;
 
-    // 2. Tạo bộ lọc rỗng ban đầu
+    // 3. Tạo bộ lọc (Query Object)
     let query = {};
 
-    // 3. Nếu có từ khóa -> Thêm điều kiện tìm tên (Regex: tìm gần đúng, không phân biệt hoa thường)
+    // Nếu có từ khóa -> Thêm điều kiện tìm tên
     if (keyword) {
       query.name = { $regex: keyword, $options: "i" };
     }
 
-    // 4. Nếu có danh mục -> Thêm điều kiện lọc danh mục
+    // Nếu có danh mục -> Thêm điều kiện lọc danh mục
     if (category) {
       query.category = category;
     }
 
-    // 5. Truy vấn Database với bộ lọc trên
-    const products = await Product.find(query)
-      .populate("category")
-      .sort({ createdAt: -1 }); // Sắp xếp sản phẩm mới nhất lên đầu
+    // 4. QUAN TRỌNG: Đếm tổng số sản phẩm khớp điều kiện (để tính tổng số trang)
+    const count = await Product.countDocuments(query);
 
-    res.json(products);
+    // 5. Truy vấn Database với phân trang
+    const products = await Product.find(query)
+      .populate("category") // Lấy chi tiết category
+      .limit(pageSize) // Giới hạn số lượng lấy ra
+      .skip(pageSize * (page - 1)) // Bỏ qua các sản phẩm của trang trước
+      .sort({ createdAt: -1 }); // Sắp xếp mới nhất lên đầu
+
+    // 6. Trả về kết quả kèm thông tin phân trang
+    res.json({
+      products,
+      page,
+      pages: Math.ceil(count / pageSize), // Tổng số trang = Tổng sp / Kích thước trang
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// GET ONE
+// GET ONE (Giữ nguyên)
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate("category");
@@ -53,7 +67,7 @@ export const getProductById = async (req, res) => {
   }
 };
 
-// UPDATE
+// UPDATE (Giữ nguyên)
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
@@ -65,7 +79,7 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// DELETE
+// DELETE (Giữ nguyên)
 export const deleteProduct = async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);

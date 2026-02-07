@@ -12,8 +12,7 @@ export default function Home() {
   const searchInputRef = useRef(null);
   const { addToCart } = useCart();
 
-  // 👇 LINK ẢNH DỰ PHÒNG (NẾU ẢNH SẢN PHẨM BỊ LỖI HOẶC TRỐNG)
-  // Dùng ảnh thời trang chung chung nhưng nghệ thuật để thay thế
+  // 👇 LINK ẢNH DỰ PHÒNG
   const FALLBACK_IMAGE =
     "https://images.unsplash.com/photo-1560769629-975ec94e6a86?q=80&w=764&auto=format&fit=crop";
 
@@ -30,18 +29,28 @@ export default function Home() {
     fetchCategories();
   }, []);
 
-  // 2. Lấy sản phẩm
+  // 2. Lấy sản phẩm (ĐÃ SỬA LỖI MAP TẠI ĐÂY)
   const fetchProducts = async (searchVal = "", catVal = selectedCategory) => {
     setLoading(true);
     try {
+      // Mặc định lấy trang 1 (8 sản phẩm mới nhất)
       const res = await api.get("/products", {
-        params: { keyword: searchVal, category: catVal },
+        params: { keyword: searchVal, category: catVal, pageNumber: 1 },
       });
-      setProducts(res.data);
+
+      // --- 👇 SỬA LỖI QUAN TRỌNG 👇 ---
+      // Kiểm tra xem backend trả về kiểu mới (có phân trang) hay kiểu cũ
+      if (res.data.products) {
+        setProducts(res.data.products); // Lấy mảng sản phẩm trong object
+      } else {
+        setProducts(res.data); // Fallback nếu API trả về mảng trực tiếp
+      }
+      // -------------------------------
     } catch (err) {
       toast.error("Không tải được sản phẩm");
+      console.error(err);
     } finally {
-      setTimeout(() => setLoading(false), 600); // Delay nhẹ để hiệu ứng mượt hơn
+      setTimeout(() => setLoading(false), 600);
     }
   };
 
@@ -62,9 +71,8 @@ export default function Home() {
     if (e.target.value === "") fetchProducts("", selectedCategory);
   };
 
-  // 👇 HÀM XỬ LÝ KHI ẢNH BỊ LỖI (QUAN TRỌNG)
   const handleImageError = (e) => {
-    e.target.src = FALLBACK_IMAGE; // Tự động thay thế bằng ảnh đẹp
+    e.target.src = FALLBACK_IMAGE;
   };
 
   // --- SKELETON LOADER ---
@@ -78,11 +86,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-black selection:text-white">
-      {/* 🌟 1. HERO BANNER (Full màn hình, ảnh nét căng) */}
+      {/* 🌟 1. HERO BANNER */}
       <div className="relative w-full h-[90vh] overflow-hidden">
-        {/* Lớp phủ tối nhẹ để chữ nổi bật */}
         <div className="absolute inset-0 bg-black/20 z-10"></div>
-
         <img
           src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop"
           alt="Fashion Banner"
@@ -117,13 +123,17 @@ export default function Home() {
       </div>
 
       <div id="shop" className="max-w-[1400px] mx-auto px-6 py-24">
-        {/* 🌟 2. HEADER BỘ LỌC (Tối giản hết mức) */}
+        {/* 🌟 2. HEADER BỘ LỌC */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
           {/* Categories */}
           <div className="flex flex-wrap gap-6 text-sm">
             <button
               onClick={() => setSelectedCategory("")}
-              className={`uppercase tracking-widest transition-colors ${selectedCategory === "" ? "text-black border-b border-black pb-1" : "text-gray-400 hover:text-black"}`}
+              className={`uppercase tracking-widest transition-colors ${
+                selectedCategory === ""
+                  ? "text-black border-b border-black pb-1"
+                  : "text-gray-400 hover:text-black"
+              }`}
             >
               All
             </button>
@@ -131,14 +141,18 @@ export default function Home() {
               <button
                 key={cat._id}
                 onClick={() => setSelectedCategory(cat._id)}
-                className={`uppercase tracking-widest transition-colors ${selectedCategory === cat._id ? "text-black border-b border-black pb-1" : "text-gray-400 hover:text-black"}`}
+                className={`uppercase tracking-widest transition-colors ${
+                  selectedCategory === cat._id
+                    ? "text-black border-b border-black pb-1"
+                    : "text-gray-400 hover:text-black"
+                }`}
               >
                 {cat.name}
               </button>
             ))}
           </div>
 
-          {/* Search Input (Ẩn viền, chỉ hiện gạch chân) */}
+          {/* Search Input */}
           <form
             onSubmit={handleSearch}
             className="w-full md:w-64 border-b border-gray-200 focus-within:border-black transition-colors"
@@ -153,7 +167,7 @@ export default function Home() {
           </form>
         </div>
 
-        {/* 🌟 3. DANH SÁCH SẢN PHẨM (Grid thoáng, ảnh lớn) */}
+        {/* 🌟 3. DANH SÁCH SẢN PHẨM */}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
             {[1, 2, 3, 4].map((n) => (
@@ -180,9 +194,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-16">
             {products.map((product) => (
               <div key={product._id} className="group cursor-pointer">
-                {/* KHUNG ẢNH: QUAN TRỌNG NHẤT */}
-                {/* aspect-[3/4]: Ép ảnh theo tỉ lệ dọc chuẩn thời trang */}
-                {/* overflow-hidden: Cắt phần thừa */}
+                {/* KHUNG ẢNH */}
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-100 mb-5">
                   <Link
                     to={`/products/${product._id}`}
@@ -190,15 +202,14 @@ export default function Home() {
                   >
                     <img
                       src={product.image || FALLBACK_IMAGE}
-                      onError={handleImageError} // 👈 Xử lý ảnh lỗi tại đây
+                      onError={handleImageError}
                       alt={product.name}
-                      // object-cover: Đảm bảo ảnh lấp đầy khung mà không bị méo (stretch)
                       className="w-full h-full object-cover transition-transform duration-[700ms] group-hover:scale-105"
                     />
                   </Link>
 
-                  {/* Nút thêm giỏ hàng (Chỉ hiện khi hover) */}
-                  {product.stock > 0 && (
+                  {/* Nút thêm giỏ hàng */}
+                  {product.countInStock > 0 && (
                     <button
                       onClick={() => addToCart(product)}
                       className="absolute bottom-0 left-0 w-full bg-white/90 backdrop-blur-sm text-black py-4 text-xs font-bold uppercase tracking-widest translate-y-full group-hover:translate-y-0 transition-transform duration-300 hover:bg-black hover:text-white"
@@ -207,7 +218,7 @@ export default function Home() {
                     </button>
                   )}
 
-                  {product.stock === 0 && (
+                  {product.countInStock === 0 && (
                     <div className="absolute top-0 left-0 w-full h-full bg-white/60 flex items-center justify-center">
                       <span className="bg-black text-white px-3 py-1 text-xs font-bold uppercase">
                         Hết hàng
@@ -216,7 +227,7 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* THÔNG TIN SẢN PHẨM (Căn giữa, font mảnh) */}
+                {/* THÔNG TIN SẢN PHẨM */}
                 <div className="text-center">
                   <h3 className="text-sm font-medium text-gray-900 mb-1 truncate px-2">
                     <Link to={`/products/${product._id}`}>{product.name}</Link>
