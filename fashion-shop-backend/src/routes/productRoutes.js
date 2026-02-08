@@ -5,17 +5,23 @@ import {
   getProductById,
   updateProduct,
   deleteProduct,
+  createProductReview, // 👈 1. Nhớ import hàm này từ Controller
 } from "../controllers/productController.js";
 
 import { protect, isAdmin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// public
+// --- PUBLIC ROUTES (Ai cũng xem được) ---
 router.get("/", getProducts);
 router.get("/:id", getProductById);
 
-// admin
+// --- USER ROUTES (Phải đăng nhập mới dùng được) ---
+// 👇 2. Route cho phép user đánh giá sản phẩm
+// POST /api/products/:id/reviews
+router.post("/:id/reviews", protect, createProductReview);
+
+// --- ADMIN ROUTES (Chỉ Admin mới dùng được) ---
 router.post("/", protect, isAdmin, createProduct);
 router.put("/:id", protect, isAdmin, updateProduct);
 router.delete("/:id", protect, isAdmin, deleteProduct);
