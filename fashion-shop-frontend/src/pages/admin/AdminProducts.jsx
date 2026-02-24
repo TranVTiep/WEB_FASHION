@@ -22,6 +22,8 @@ export default function AdminProducts() {
     image: "",
     category: "",
     stock: 0,
+    sizes: [], // Trường mới
+    colors: [], // Trường mới
   });
 
   const { user } = useAuth();
@@ -52,8 +54,6 @@ export default function AdminProducts() {
   const fetchProducts = async (pageNumber) => {
     try {
       const res = await api.get(`/products?pageNumber=${pageNumber}`);
-
-      // Xử lý dữ liệu phân trang
       if (res.data.products) {
         setProducts(res.data.products);
         setPages(res.data.pages);
@@ -75,27 +75,38 @@ export default function AdminProducts() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // --- LOGIC XỬ LÝ BIẾN THỂ (SIZE & MÀU) ---
+  const handleArrayInput = (field, value) => {
+    const cleanValue = value.trim();
+    if (!cleanValue) return;
+    if (!formData[field].includes(cleanValue)) {
+      setFormData({ ...formData, [field]: [...formData[field], cleanValue] });
+    }
+  };
+
+  const removeArrayItem = (field, itemToRemove) => {
+    setFormData({
+      ...formData,
+      [field]: formData[field].filter((item) => item !== itemToRemove),
+    });
+  };
+
   // 4. XỬ LÝ NHẬP EXCEL
   const handleImportExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const importFormData = new FormData();
     importFormData.append("file", file);
-
     try {
       toast.info("Đang đọc file Excel, vui lòng chờ... ⏳");
-
       await api.post("/upload/import", importFormData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
       toast.success("Nhập sản phẩm từ Excel thành công! 🌿");
       e.target.value = null;
       setPage(1);
       fetchProducts(1);
     } catch (err) {
-      console.error(err);
       const errorMsg = err.response?.data?.message || "Lỗi nhập file Excel!";
       toast.error(errorMsg + " ❌");
       e.target.value = null;
@@ -125,13 +136,11 @@ export default function AdminProducts() {
         toast.success("Thêm mới thành công! 🌿");
         setPage(1);
       }
-
       resetForm();
       setIsEditing(false);
       setCurrentProduct(null);
       fetchProducts(page);
     } catch (err) {
-      console.error(err);
       toast.error("Có lỗi xảy ra, vui lòng thử lại!");
     }
   };
@@ -144,21 +153,24 @@ export default function AdminProducts() {
       image: "",
       category: "",
       stock: 0,
+      sizes: [],
+      colors: [],
     });
   };
 
   const handleEdit = (product) => {
     setIsEditing(true);
     setCurrentProduct(product);
-    const realStock =
-      product.stock !== undefined ? product.stock : product.countInStock || 0;
     setFormData({
       name: product.name,
       price: product.price,
       description: product.description,
       image: product.image,
       category: product.category?._id || product.category || "",
-      stock: realStock,
+      stock:
+        product.stock !== undefined ? product.stock : product.countInStock || 0,
+      sizes: product.sizes || [],
+      colors: product.colors || [],
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -168,11 +180,8 @@ export default function AdminProducts() {
       try {
         await api.delete(`/products/${id}`);
         toast.success("Đã xóa sản phẩm 🌿");
-        if (products.length === 1 && page > 1) {
-          setPage(page - 1);
-        } else {
-          fetchProducts(page);
-        }
+        if (products.length === 1 && page > 1) setPage(page - 1);
+        else fetchProducts(page);
       } catch (err) {
         toast.error("Lỗi xóa sản phẩm");
       }
@@ -184,14 +193,11 @@ export default function AdminProducts() {
       product.stock !== undefined ? product.stock : product.countInStock || 0,
     );
     const newStock = currentStock + amount;
-
     if (newStock < 0) return;
-
     try {
       await api.put(`/products/${product._id}`, {
         ...product,
         stock: newStock,
-        countInStock: newStock,
       });
       fetchProducts(page);
     } catch (error) {
@@ -203,7 +209,6 @@ export default function AdminProducts() {
     <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-screen">
       {/* FORM BÊN TRÁI */}
       <div className="lg:col-span-1 space-y-6">
-        {/* NÚT IMPORT EXCEL */}
         <div className="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100 shadow-sm">
           <h3 className="font-bold text-emerald-800 mb-3 text-sm uppercase">
             Nhập hàng hàng loạt
@@ -223,7 +228,6 @@ export default function AdminProducts() {
           </label>
         </div>
 
-        {/* FORM NHẬP TAY */}
         <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
           <h2 className="text-xl font-bold mb-6 text-gray-800">
             {isEditing ? "Sửa sản phẩm" : "Thêm sản phẩm mới"}
@@ -257,6 +261,82 @@ export default function AdminProducts() {
                 required
               />
             </div>
+
+            {/* --- PHẦN NHẬP BIẾN THỂ (SIZE & MÀU) --- */}
+            <div className="space-y-4 py-2 border-y border-gray-50">
+              {/* SIZE */}
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">
+                  Kích cỡ (Nhấn Enter để thêm)
+                </label>
+                <input
+                  type="text"
+                  placeholder="S, M, L, XL..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleArrayInput("sizes", e.target.value.toUpperCase());
+                      e.target.value = "";
+                    }
+                  }}
+                  className="w-full bg-gray-50 p-3 mt-1 rounded-xl outline-none border border-transparent focus:border-emerald-500 text-sm transition"
+                />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.sizes.map((s) => (
+                    <span
+                      key={s}
+                      className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-xs font-bold border border-emerald-100 flex items-center gap-1"
+                    >
+                      {s}{" "}
+                      <button
+                        type="button"
+                        onClick={() => removeArrayItem("sizes", s)}
+                        className="hover:text-red-500 ml-1"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* MÀU SẮC */}
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">
+                  Màu sắc (Nhấn Enter để thêm)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Đen, Trắng, Xanh..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleArrayInput("colors", e.target.value);
+                      e.target.value = "";
+                    }
+                  }}
+                  className="w-full bg-gray-50 p-3 mt-1 rounded-xl outline-none border border-transparent focus:border-blue-500 text-sm transition"
+                />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.colors.map((c) => (
+                    <span
+                      key={c}
+                      className="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-bold border border-blue-100 flex items-center gap-1"
+                    >
+                      {c}{" "}
+                      <button
+                        type="button"
+                        onClick={() => removeArrayItem("colors", c)}
+                        className="hover:text-red-500 ml-1"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <input
               name="image"
               placeholder="Link ảnh (URL)"
@@ -270,7 +350,7 @@ export default function AdminProducts() {
               value={formData.description}
               onChange={handleChange}
               className="w-full bg-gray-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
-              rows="3"
+              rows="2"
             />
             <select
               name="category"
@@ -314,7 +394,7 @@ export default function AdminProducts() {
 
       {/* DANH SÁCH BÊN PHẢI */}
       <div className="lg:col-span-2">
-        <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100">
+        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-2xl font-bold text-gray-800">Kho Sản Phẩm</h1>
             <span className="text-sm font-bold bg-emerald-50 text-emerald-600 px-4 py-1.5 rounded-full border border-emerald-100">
@@ -336,7 +416,6 @@ export default function AdminProducts() {
                     className="w-24 h-24 object-cover rounded-2xl bg-white p-1 border border-gray-100"
                     alt=""
                   />
-
                   <div className="flex-1 w-full">
                     <div className="flex items-center gap-3">
                       <h3 className="font-bold text-gray-800 text-lg line-clamp-1">
@@ -346,11 +425,21 @@ export default function AdminProducts() {
                         {p.category?.name}
                       </span>
                     </div>
-                    <p className="text-gray-500 text-sm mt-1 mb-4 line-clamp-1">
-                      {p.description}
-                    </p>
+                    {/* Hiển thị nhanh các biến thể ở danh sách */}
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {p.sizes?.length > 0 && (
+                        <span className="text-[10px] text-gray-400">
+                          Sizes: {p.sizes.join(", ")}
+                        </span>
+                      )}
+                      {p.colors?.length > 0 && (
+                        <span className="text-[10px] text-gray-400 font-bold text-blue-400">
+                          | Colors: {p.colors.join(", ")}
+                        </span>
+                      )}
+                    </div>
 
-                    <div className="flex flex-wrap items-center gap-5">
+                    <div className="flex flex-wrap items-center gap-5 mt-3">
                       <span className="text-emerald-600 font-bold text-lg">
                         {new Intl.NumberFormat("vi-VN").format(p.price)}đ
                       </span>
@@ -375,7 +464,6 @@ export default function AdminProducts() {
                       </div>
                     </div>
                   </div>
-
                   <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
                     <button
                       onClick={() => handleEdit(p)}
@@ -393,17 +481,8 @@ export default function AdminProducts() {
                 </div>
               );
             })}
-
-            {products.length === 0 && (
-              <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                <p className="text-gray-500 font-medium">
-                  Không tìm thấy sản phẩm nào.
-                </p>
-              </div>
-            )}
           </div>
 
-          {/* Phân trang */}
           {pages > 1 && (
             <div className="flex justify-center mt-10 gap-3">
               <button

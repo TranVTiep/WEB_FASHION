@@ -48,28 +48,25 @@ function Navbar() {
             Eco<span className="text-gray-800">Fashion</span>
           </Link>
 
-          {/* MENU */}
+          {/* MENU TRÁI */}
           <div className="hidden md:flex items-center gap-8">
             {isAdmin ? (
               <>
-                <NavLink to="/" active={location.pathname === "/"}>
-                  Website
-                </NavLink>
                 <NavLink
                   to="/admin/dashboard"
-                  active={location.pathname.includes("/dashboard")}
+                  active={location.pathname === "/admin/dashboard"}
                 >
                   Thống kê
                 </NavLink>
                 <NavLink
                   to="/admin/products"
-                  active={location.pathname.includes("/admin/products")}
+                  active={location.pathname === "/admin/products"}
                 >
                   Sản phẩm
                 </NavLink>
                 <NavLink
                   to="/admin/orders"
-                  active={location.pathname.includes("/admin/orders")}
+                  active={location.pathname === "/admin/orders"}
                 >
                   Đơn hàng
                 </NavLink>
@@ -91,6 +88,15 @@ function Navbar() {
                 >
                   Sản phẩm
                 </NavLink>
+                {/* HIỂN THỊ ĐƠN MUA NẾU ĐÃ ĐĂNG NHẬP */}
+                {user && (
+                  <NavLink
+                    to="/my-orders"
+                    active={location.pathname === "/my-orders"}
+                  >
+                    Đơn mua
+                  </NavLink>
+                )}
               </>
             )}
           </div>
@@ -98,7 +104,8 @@ function Navbar() {
 
         {/* CỤM BÊN PHẢI */}
         <div className="flex items-center gap-6">
-          {!isAdmin && user && (
+          {/* GIỎ HÀNG (ẨN NẾU LÀ ADMIN) */}
+          {!isAdmin && (
             <Link
               to="/cart"
               className="relative p-2 text-gray-600 hover:text-emerald-500 transition"
@@ -131,14 +138,14 @@ function Navbar() {
                 <p className="text-sm font-bold text-gray-800">{user.name}</p>
                 <Link
                   to="/profile"
-                  className="text-xs text-emerald-600 hover:underline"
+                  className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md hover:bg-emerald-100 transition"
                 >
-                  Hồ sơ cá nhân
+                  HỒ SƠ CỦA TÔI
                 </Link>
               </div>
               <button
                 onClick={handleLogout}
-                className="bg-red-50 text-red-500 px-4 py-2 rounded-2xl text-sm font-bold hover:bg-red-100 transition"
+                className="bg-red-50 text-red-500 px-4 py-2 rounded-2xl text-sm font-bold hover:bg-red-500 hover:text-white transition-all duration-300"
               >
                 Thoát
               </button>
@@ -164,4 +171,5 @@ function Navbar() {
     </nav>
   );
 }
+
 export default Navbar;

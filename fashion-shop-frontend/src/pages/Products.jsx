@@ -129,55 +129,69 @@ export default function Products() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {products.map((product) => (
-              <Link
-                key={product._id}
-                to={`/products/${product._id}`}
-                className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col"
-              >
-                <div className="relative aspect-square overflow-hidden bg-gray-50 p-4">
-                  <img
-                    src={product.image || "https://via.placeholder.com/300"}
-                    alt={product.name}
-                    className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {product.countInStock === 0 && (
-                    <span className="absolute top-6 left-6 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      Hết hàng
-                    </span>
-                  )}
-                </div>
-                <div className="p-5 flex flex-col flex-1">
-                  <p className="text-xs text-emerald-500 font-bold mb-1 uppercase">
-                    {product.category?.name}
-                  </p>
-                  <h3 className="font-bold text-gray-800 text-lg mb-1 truncate">
-                    {product.name}
-                  </h3>
-                  <div className="mt-auto flex items-center justify-between pt-4">
-                    <span className="text-emerald-600 font-bold text-lg">
-                      {new Intl.NumberFormat("vi-VN").format(product.price)}đ
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        addToCart(
-                          product,
-                          1,
-                          product.sizes?.[0] || "M",
-                          product.colors?.[0] || "Basic",
-                        );
-                        toast.success("Đã thêm! 🌿");
-                      }}
-                      disabled={product.countInStock === 0}
-                      className="bg-emerald-50 text-emerald-600 h-10 w-10 rounded-2xl flex items-center justify-center font-bold hover:bg-emerald-500 hover:text-white transition-colors"
-                    >
-                      +
-                    </button>
+            {products.map((product) => {
+              // 👇 KIỂM TRA TỒN KHO DÙNG BIẾN STOCK
+              const isOutOfStock = product.stock <= 0;
+
+              return (
+                <Link
+                  key={product._id}
+                  to={`/products/${product._id}`}
+                  className={`group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col ${isOutOfStock ? "opacity-80" : ""}`}
+                >
+                  <div className="relative aspect-square overflow-hidden bg-gray-50 p-4">
+                    <img
+                      src={product.image || "https://via.placeholder.com/300"}
+                      alt={product.name}
+                      className="w-full h-full object-cover rounded-2xl transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {/* 👇 HIỂN THỊ NHÃN HẾT HÀNG */}
+                    {isOutOfStock && (
+                      <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] flex items-center justify-center">
+                        <span className="bg-red-500 text-white text-[10px] uppercase tracking-widest font-black px-4 py-2 rounded-full shadow-lg">
+                          Hết hàng
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </Link>
-            ))}
+                  <div className="p-5 flex flex-col flex-1">
+                    <p className="text-xs text-emerald-500 font-bold mb-1 uppercase">
+                      {product.category?.name}
+                    </p>
+                    <h3 className="font-bold text-gray-800 text-lg mb-1 truncate">
+                      {product.name}
+                    </h3>
+                    <div className="mt-auto flex items-center justify-between pt-4">
+                      <span className="text-emerald-600 font-bold text-lg">
+                        {new Intl.NumberFormat("vi-VN").format(product.price)}đ
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          // Mặc định chọn size và màu đầu tiên nếu có
+                          addToCart(
+                            product,
+                            1,
+                            product.sizes?.[0] || "M",
+                            product.colors?.[0] || "Basic",
+                          );
+                          toast.success("Đã thêm vào giỏ! 🌿");
+                        }}
+                        // 👇 DISABLE NÚT NẾU HẾT HÀNG
+                        disabled={isOutOfStock}
+                        className={`h-10 w-10 rounded-2xl flex items-center justify-center font-bold transition-all ${
+                          isOutOfStock
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white active:scale-90"
+                        }`}
+                      >
+                        {isOutOfStock ? "✕" : "+"}
+                      </button>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
 
           {pages > 1 && (

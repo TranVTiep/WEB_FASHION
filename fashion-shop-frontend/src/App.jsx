@@ -1,4 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { toast } from "react-toastify";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Home from "./pages/Home";
@@ -15,12 +17,32 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import Profile from "./pages/Profile";
 import ForgotPassword from "./pages/ForgotPassword";
 import { useAuth } from "./context/AuthContext";
+import MyOrders from "./pages/MyOrders";
 
-// Component bảo vệ Route
+// --- COMPONENT BẢO VỆ ROUTE (ĐÃ CẬP NHẬT) ---
 const ProtectedRoute = ({ children, isAdmin = false }) => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  if (isAdmin && user.role !== "admin") return <Navigate to="/" replace />;
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        toast.info("Vui lòng đăng nhập để tiếp tục! 🔑");
+      } else if (isAdmin && user.role !== "admin") {
+        toast.error("Bạn không có quyền truy cập khu vực Admin! 🛡️");
+      }
+    }
+  }, [user, isAdmin, loading]);
+
+  if (loading) return null; // Tránh flash giao diện khi đang tải dữ liệu user
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (isAdmin && user.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 };
 
@@ -30,6 +52,7 @@ function App() {
       <Navbar />
       <div className="container mx-auto mt-4 flex-1 px-4">
         <Routes>
+          {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<Products />} />
           <Route path="/products/:id" element={<ProductDetail />} />
@@ -38,7 +61,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* Routes yêu cầu đăng nhập */}
+          {/* Routes yêu cầu đăng nhập thường */}
           <Route
             path="/profile"
             element={
@@ -55,8 +78,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/my-orders"
+            element={
+              <ProtectedRoute>
+                <MyOrders />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Routes Admin */}
+          {/* Routes Admin - Tất cả đều được bọc bởi ProtectedRoute với isAdmin={true} */}
           <Route
             path="/admin/dashboard"
             element={
@@ -89,10 +120,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Cửa hậu: Nếu user nhập bậy bạ thì về trang chủ */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
       <Footer />
     </div>
   );
 }
+
 export default App;

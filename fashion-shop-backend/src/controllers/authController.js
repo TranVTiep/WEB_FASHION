@@ -60,26 +60,36 @@ export const login = asyncHandler(async (req, res) => {
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
+
   if (!user) {
     res.status(404);
-    throw new Error("Email không tồn tại");
+    throw new Error("Email không tồn tại trong hệ thống");
   }
 
+  // Tạo mật khẩu ngẫu nhiên mới và mã hóa ngay
   const tempPassword = crypto.randomBytes(4).toString("hex");
   user.password = await bcrypt.hash(tempPassword, 10);
   await user.save();
 
+  // 👇 THÊM DÒNG NÀY ĐỂ IN MẬT KHẨU RA MÀN HÌNH CHẠY NODE.JS
+  console.log("======================================");
+  console.log(`🔐 MẬT KHẨU MỚI CỦA ${email} LÀ: ${tempPassword}`);
+  console.log("======================================");
+
+  // 👇 TẠM THỜI COMMENT (VÔ HIỆU HÓA) PHẦN GỬI MAIL NẾU BẠN CHƯA CẤU HÌNH
+  /*
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
   });
-
   await transporter.sendMail({
     from: '"Shop Fashion" <no-reply@shop.com>',
     to: email,
     subject: "Cấp lại mật khẩu mới",
     text: `Mật khẩu tạm thời của bạn là: ${tempPassword}\nVui lòng đăng nhập và đổi mật khẩu ngay.`,
   });
+  */
 
-  res.json({ message: "Mật khẩu mới đã được gửi vào Email!" });
+  // Báo thành công về cho Frontend
+  res.json({ message: "Đã tạo mật khẩu mới! Hãy kiểm tra Terminal Backend." });
 });

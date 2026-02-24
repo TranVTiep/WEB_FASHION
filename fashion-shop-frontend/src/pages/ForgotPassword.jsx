@@ -11,11 +11,16 @@ const ForgotPassword = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/users/forgot-password", { email });
-      toast.success("Mật khẩu mới đã được gửi vào Email! 🌿");
+      // 👇 CHỖ NÀY ĐÃ ĐƯỢC SỬA THÀNH /auth/forgot-password
+      await api.post("/auth/forgot-password", { email });
+
+      toast.success("Mật khẩu mới đã được tạo! 🌿");
       setEmail("");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Lỗi gửi mail");
+      toast.error(
+        error.response?.data?.message ||
+          "Lỗi gọi API: Không tìm thấy đường dẫn",
+      );
     } finally {
       setLoading(false);
     }
@@ -28,8 +33,8 @@ const ForgotPassword = () => {
           Quên Mật Khẩu?
         </h2>
         <p className="text-gray-500 text-center mb-8 text-sm leading-relaxed">
-          Đừng lo lắng! Hãy nhập email của bạn, chúng tôi sẽ gửi mật khẩu mới
-          ngay lập tức.
+          Đừng lo lắng! Hãy nhập email của bạn, chúng tôi sẽ cấp lại mật khẩu
+          mới ngay lập tức.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -45,7 +50,7 @@ const ForgotPassword = () => {
             disabled={loading}
             className="w-full bg-emerald-500 text-white py-4 rounded-2xl font-bold hover:bg-emerald-600 transition shadow-md shadow-emerald-200 disabled:opacity-50"
           >
-            {loading ? "ĐANG GỬI..." : "LẤY LẠI MẬT KHẨU"}
+            {loading ? "ĐANG XỬ LÝ..." : "LẤY LẠI MẬT KHẨU"}
           </button>
         </form>
 
@@ -61,4 +66,5 @@ const ForgotPassword = () => {
     </div>
   );
 };
+
 export default ForgotPassword;

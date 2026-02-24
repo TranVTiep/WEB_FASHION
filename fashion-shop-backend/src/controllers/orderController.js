@@ -84,8 +84,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   const updatedOrder = await order.save();
   res.json(updatedOrder);
 });
-
-// --- HỦY ĐƠN HÀNG ---
+// --- HỦY ĐƠN HÀNG (Dành cho cả User và Admin) ---
 export const cancelOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
 
@@ -93,20 +92,34 @@ export const cancelOrder = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Không tìm thấy đơn hàng");
   }
-  if (order.status !== "pending") {
-    res.status(400);
-    throw new Error("Chỉ có thể hủy đơn hàng đang chờ xử lý");
+
+  // Bảo mật: Nếu không phải Admin, thì chỉ chủ đơn hàng mới được hủy
+  if (
+    req.user.role !== "admin" &&
+    order.user.toString() !== req.user._id.toString()
+  ) {
+    res.status(401);
+    throw new Error("Bạn không có quyền hủy đơn hàng này");
   }
 
-  // Hoàn lại kho
+  // Chỉ cho phép hủy khi đơn còn ở trạng thái Chờ xử lý (pending)
+  if (order.status !== "pending") {
+    res.status(400);
+    throw new Error(
+      "Đơn hàng đã được xử lý, không thể hủy. Vui lòng liên hệ shop.",
+    );
+  }
+
+  // 1. Hoàn lại kho số lượng sản phẩm
   for (const item of order.items) {
     await Product.findByIdAndUpdate(item.product, {
       $inc: { stock: item.quantity },
     });
   }
 
+  // 2. Cập nhật trạng thái đơn
   order.status = "cancelled";
   await order.save();
 
-  res.json(order);
+  res.json({ message: "Đơn hàng đã được hủy và hoàn lại kho thành công! 🌿" });
 });
