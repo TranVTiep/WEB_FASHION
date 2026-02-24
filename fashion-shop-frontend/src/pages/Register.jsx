@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify"; // 👈 Import toast
+import { useNavigate, Link } from "react-router-dom"; // 👈 Thêm Link
+import { toast } from "react-toastify";
 
 function Register() {
   const [name, setName] = useState("");
@@ -14,10 +14,13 @@ function Register() {
     e.preventDefault();
     try {
       await register(name, email, password);
-      toast.success("Đăng ký thành công! Hãy đăng nhập ngay. 🎉"); // 👈 Thông báo xanh
-      navigate("/login");
+      toast.success("Đăng ký thành công! Chào mừng bạn. 🎉");
+      navigate("/"); // Đẩy thẳng vào trang chủ luôn
     } catch (err) {
-      toast.error("Đăng ký thất bại. Email có thể đã tồn tại! ❌"); // 👈 Thông báo đỏ
+      // 👇 Lấy lỗi chuẩn từ Backend (vd: "Email đã tồn tại")
+      const errorMessage =
+        err.response?.data?.message || "Đăng ký thất bại! ❌";
+      toast.error(errorMessage);
     }
   };
 
@@ -28,7 +31,7 @@ function Register() {
         <input
           type="text"
           placeholder="Họ tên"
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -36,7 +39,7 @@ function Register() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -44,15 +47,27 @@ function Register() {
         <input
           type="password"
           placeholder="Mật khẩu"
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          minLength="6" // Khuyến khích mk ít nhất 6 ký tự
         />
         <button className="w-full bg-black text-white py-2 rounded font-bold hover:bg-gray-800 transition">
           Đăng ký
         </button>
       </form>
+
+      {/* 👇 Thêm điều hướng về trang Đăng nhập */}
+      <p className="mt-4 text-sm text-center">
+        Đã có tài khoản?{" "}
+        <Link
+          to="/login"
+          className="text-blue-600 hover:underline font-semibold"
+        >
+          Đăng nhập
+        </Link>
+      </p>
     </div>
   );
 }

@@ -1,138 +1,94 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import api from "../api/axios";
+import { createContext, useState, useContext, useEffect } from "react";
 import { toast } from "react-toastify";
-import { useAuth } from "./AuthContext";
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-  const { user } = useAuth();
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      const savedCart = localStorage.getItem("cart");
+      return savedCart ? JSON.parse(savedCart) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
-  // State lưu danh sách ID các sản phẩm được chọn (để thanh toán sau này)
+  // 👇 STATE MỚI: Danh sách ID các sản phẩm được chọn để mua
+  // Lưu dưới dạng: "productId_size_color" để phân biệt
   const [selectedItems, setSelectedItems] = useState([]);
 
-  const fetchCart = async () => {
-    try {
-      const res = await api.get("/cart");
-      setCart(res.data.items || []);
-    } catch (err) {
-      console.error("Lỗi lấy giỏ hàng:", err);
-      setCart([]);
-    }
-  };
-
   useEffect(() => {
-    if (user) {
-      fetchCart();
-    } else {
-      setCart([]);
-      setSelectedItems([]);
-    }
-  }, [user]);
+    localStorage.setItem("cart", JSON.stringify(cart));
+  }, [cart]);
 
-  // 👇 1. SỬA HÀM ADD: THÊM CHECK TỒN KHO
-  const addToCart = async (product, quantity = 1) => {
-    if (!user) {
-      toast.info("Vui lòng đăng nhập để mua hàng! 🔒");
-      return;
+  const addToCart = (product, quantity, selectedSize, selectedColor) => {
+    if (product.sizes?.length > 0 && !selectedSize) {
+      toast.error("Vui lòng chọn Kích cỡ!");
+      return false;
+    }
+    if (product.colors?.length > 0 && !selectedColor) {
+      toast.error("Vui lòng chọn Màu sắc!");
+      return false;
     }
 
-    // --- LOGIC KIỂM TRA TỒN KHO MỚI ---
-    // Tìm xem sản phẩm này đã có trong giỏ chưa
-    const existingItem = cart.find((item) => item.product._id === product._id);
-    const currentQty = existingItem ? existingItem.quantity : 0;
-    const newQty = currentQty + quantity;
-
-    // Kiểm tra số lượng tồn kho (nếu có thông tin stock)
-    // Lưu ý: product.stock lấy từ trang ProductDetail/Home truyền vào
-    if (product.stock !== undefined && newQty > product.stock) {
-      toast.warning(`Chỉ còn ${product.stock} sản phẩm trong kho! 😅`);
-      return; // Dừng lại, không gọi API
-    }
-    // ----------------------------------
-
-    try {
-      await api.post("/cart", { productId: product._id, quantity });
-      fetchCart();
-      toast.success(`Đã thêm vào giỏ! 🛒`);
-    } catch (err) {
-      if (err.response?.status === 401)
-        toast.info("Phiên đăng nhập hết hạn! 🔒");
-      else toast.error("Lỗi thêm giỏ hàng ❌");
-    }
-  };
-
-  // 👇 2. SỬA HÀM UPDATE: THÊM CHECK TỒN KHO
-  const updateQuantity = async (productId, newQuantity) => {
-    if (newQuantity < 1) return;
-
-    // --- LOGIC KIỂM TRA TỒN KHO MỚI ---
-    const itemToUpdate = cart.find(
-      (item) => item.product._id === productId || item.product === productId,
+    const existItem = cart.find(
+      (x) =>
+        x._id === product._id &&
+        x.selectedSize === selectedSize &&
+        x.selectedColor === selectedColor,
     );
 
-    if (itemToUpdate) {
-      const stock = itemToUpdate.product.stock || 0;
-      // Nếu số lượng mới lớn hơn tồn kho -> Chặn luôn
-      if (newQuantity > stock) {
-        toast.warning(`Kho chỉ còn ${stock} cái thôi!`);
-        return;
-      }
-    }
-    // ----------------------------------
-
-    try {
-      // Cập nhật UI ngay lập tức (Optimistic update)
-      setCart((prev) =>
-        prev.map((item) =>
-          item.product._id === productId || item.product === productId
-            ? { ...item, quantity: newQuantity }
-            : item,
+    if (existItem) {
+      setCart(
+        cart.map((x) =>
+          x._id === product._id &&
+          x.selectedSize === selectedSize &&
+          x.selectedColor === selectedColor
+            ? { ...existItem, quantity: existItem.quantity + quantity }
+            : x,
         ),
       );
-      // Gọi API cập nhật ngầm
-      await api.put("/cart", { productId, quantity: newQuantity });
-    } catch (err) {
-      toast.error("Lỗi cập nhật số lượng");
-      fetchCart(); // Nếu lỗi thì load lại dữ liệu gốc
-    }
-  };
-
-  const removeFromCart = async (id) => {
-    try {
-      setSelectedItems((prev) => prev.filter((itemId) => itemId !== id));
-
-      setCart((prev) =>
-        prev.filter((item) => (item.product._id || item._id) !== id),
-      );
-
-      await api.delete(`/cart/${id}`);
-      fetchCart();
-      toast.success("Đã xóa sản phẩm! 🗑️");
-    } catch (err) {
-      toast.error("Lỗi xóa sản phẩm");
-      fetchCart();
-    }
-  };
-
-  const toggleSelectItem = (productId) => {
-    setSelectedItems((prev) => {
-      if (prev.includes(productId)) {
-        return prev.filter((id) => id !== productId);
-      } else {
-        return [...prev, productId];
-      }
-    });
-  };
-
-  const selectAllItems = (isChecked) => {
-    if (isChecked) {
-      const allIds = cart.map((item) => item.product._id);
-      setSelectedItems(allIds);
     } else {
-      setSelectedItems([]);
+      setCart([...cart, { ...product, quantity, selectedSize, selectedColor }]);
     }
+    return true;
+  };
+
+  const removeFromCart = (productId, selectedSize, selectedColor) => {
+    setCart(
+      cart.filter(
+        (x) =>
+          !(
+            x._id === productId &&
+            x.selectedSize === selectedSize &&
+            x.selectedColor === selectedColor
+          ),
+      ),
+    );
+    // Xóa luôn khỏi danh sách chọn nếu đang chọn
+    const key = `${productId}_${selectedSize}_${selectedColor}`;
+    setSelectedItems((prev) => prev.filter((k) => k !== key));
+  };
+
+  const updateQuantity = (productId, selectedSize, selectedColor, amount) => {
+    setCart(
+      cart.map((item) => {
+        if (
+          item._id === productId &&
+          item.selectedSize === selectedSize &&
+          item.selectedColor === selectedColor
+        ) {
+          const newQty = item.quantity + amount;
+          if (newQty < 1) return item;
+          if (newQty > item.stock) {
+            toast.error("Đã đạt giới hạn tồn kho!");
+            return item;
+          }
+          return { ...item, quantity: newQty };
+        }
+        return item;
+      }),
+    );
   };
 
   const clearCart = () => {
@@ -140,17 +96,39 @@ export const CartProvider = ({ children }) => {
     setSelectedItems([]);
   };
 
+  // 👇 HÀM XỬ LÝ CHECKBOX
+  const toggleSelectItem = (productId, selectedSize, selectedColor) => {
+    const key = `${productId}_${selectedSize}_${selectedColor}`;
+    if (selectedItems.includes(key)) {
+      setSelectedItems(selectedItems.filter((k) => k !== key)); // Bỏ chọn
+    } else {
+      setSelectedItems([...selectedItems, key]); // Chọn
+    }
+  };
+
+  // Chọn tất cả / Bỏ chọn tất cả
+  const toggleSelectAll = () => {
+    if (selectedItems.length === cart.length) {
+      setSelectedItems([]); // Bỏ hết
+    } else {
+      const allKeys = cart.map(
+        (item) => `${item._id}_${item.selectedSize}_${item.selectedColor}`,
+      );
+      setSelectedItems(allKeys); // Chọn hết
+    }
+  };
+
   return (
     <CartContext.Provider
       value={{
         cart,
-        selectedItems,
         addToCart,
-        updateQuantity,
         removeFromCart,
+        updateQuantity,
         clearCart,
+        selectedItems,
         toggleSelectItem,
-        selectAllItems,
+        toggleSelectAll, // 👈 Xuất các hàm mới
       }}
     >
       {children}

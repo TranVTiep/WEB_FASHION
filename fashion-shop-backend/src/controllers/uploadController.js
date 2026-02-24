@@ -31,14 +31,30 @@ export const importProductsFromExcel = async (req, res) => {
       const categoryName = getValue(item, ["Danh mục", "Category", "Danh muc"]);
       const image = getValue(item, ["Hình ảnh", "Image", "Hinh anh"]);
       const description = getValue(item, ["Mô tả", "Description", "Mo ta"]);
-
-      // 👇 Lấy số lượng, map vào biến stockVal
       const stockVal = getValue(item, [
         "Tồn kho",
         "Stock",
         "So luong",
         "Quantity",
       ]);
+
+      // 👇 ĐỌC CỘT SIZE VÀ MÀU TỪ EXCEL
+      const sizeRaw = getValue(item, ["Size", "Kich co", "Sizes"]);
+      const colorRaw = getValue(item, ["Màu", "Color", "Mau sac", "Colors"]);
+
+      // Tách chuỗi "S, M, L" thành mảng
+      const sizes = sizeRaw
+        ? sizeRaw
+            .toString()
+            .split(",")
+            .map((s) => s.trim())
+        : [];
+      const colors = colorRaw
+        ? colorRaw
+            .toString()
+            .split(",")
+            .map((c) => c.trim())
+        : [];
 
       const matchedCategory = categories.find(
         (c) =>
@@ -56,8 +72,12 @@ export const importProductsFromExcel = async (req, res) => {
           image: image || "",
           description: description || "",
           category: categoryId,
-          // 👇 CHỈ LƯU VÀO stock
           stock: Number(stockVal) || 0,
+
+          // 👇 LƯU VÀO DATABASE
+          sizes: sizes,
+          colors: colors,
+
           rating: 0,
           numReviews: 0,
         });

@@ -1,37 +1,31 @@
 import mongoose from "mongoose";
 
-const orderSchema = new mongoose.Schema(
+const orderSchema = mongoose.Schema(
   {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    user: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "User" },
     items: [
       {
         product: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Product",
           required: true,
+          ref: "Product",
         },
         quantity: { type: Number, required: true },
         price: { type: Number, required: true },
+
+        // 👇 THÊM 2 DÒNG NÀY ĐỂ LƯU BIẾN THỂ
+        size: { type: String },
+        color: { type: String },
       },
     ],
-    totalPrice: {
-      type: Number,
-      required: true,
-    },
-    // 👇 Thêm phần này để lưu địa chỉ giao hàng
     shippingAddress: {
       address: { type: String, required: true },
       phone: { type: String, required: true },
     },
-    status: {
-      type: String,
-      default: "pending", // pending, shipping, completed, cancelled
-      enum: ["pending", "confirmed", "shipping", "completed", "cancelled"],
-    },
+    totalPrice: { type: Number, required: true, default: 0.0 },
+    isPaid: { type: Boolean, required: true, default: false },
+    paidAt: { type: Date },
+    status: { type: String, required: true, default: "pending" }, // pending, delivered, cancelled
   },
   { timestamps: true },
 );

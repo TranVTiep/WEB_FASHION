@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify"; // 👈 Import toast
+import { useNavigate, Link } from "react-router-dom"; // 👈 Thêm Link
+import { toast } from "react-toastify";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -13,10 +13,12 @@ function Login() {
     e.preventDefault();
     try {
       await login(email, password);
-      toast.success("Đăng nhập thành công! 🎉"); // 👈 Thông báo xanh
+      toast.success("Đăng nhập thành công! 🎉");
       navigate("/");
     } catch (err) {
-      toast.error("Sai email hoặc mật khẩu! ❌"); // 👈 Thông báo đỏ
+      // 👇 Lấy câu thông báo lỗi chuẩn từ Backend trả về
+      const errorMessage = err.response?.data?.message || "Lỗi đăng nhập! ❌";
+      toast.error(errorMessage);
     }
   };
 
@@ -27,7 +29,7 @@ function Login() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -35,7 +37,7 @@ function Login() {
         <input
           type="password"
           placeholder="Mật khẩu"
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -44,6 +46,22 @@ function Login() {
           Đăng nhập
         </button>
       </form>
+
+      {/* 👇 Thêm điều hướng sang trang Đăng ký và Quên mật khẩu */}
+      <div className="mt-4 text-sm text-center flex flex-col space-y-2">
+        <p>
+          Chưa có tài khoản?{" "}
+          <Link
+            to="/register"
+            className="text-blue-600 hover:underline font-semibold"
+          >
+            Đăng ký ngay
+          </Link>
+        </p>
+        <Link to="/forgot-password" className="text-gray-500 hover:underline">
+          Quên mật khẩu?
+        </Link>
+      </div>
     </div>
   );
 }

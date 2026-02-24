@@ -22,8 +22,12 @@ const productSchema = new mongoose.Schema(
       required: true,
     },
 
-    // 👇 CHỈ DÙNG DUY NHẤT BIẾN NÀY
+    // 👇 CHỈ DÙNG 1 BIẾN TỒN KHO
     stock: { type: Number, required: true, default: 0 },
+
+    // 👇 THÊM 2 TRƯỜNG BIẾN THỂ
+    sizes: [{ type: String }], // Ví dụ: ["S", "M", "L"]
+    colors: [{ type: String }], // Ví dụ: ["Đỏ", "Xanh"]
 
     reviews: [reviewSchema],
     rating: { type: Number, required: true, default: 0 },

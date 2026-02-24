@@ -17,14 +17,17 @@ function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  // 1. Reset state khi ID thay đổi (Khi bấm vào sản phẩm gợi ý)
+  // 👇 STATE CHO BIẾN THỂ
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
+
   useEffect(() => {
     setQuantity(1);
     setRating(5);
     setComment("");
-    setLoading(true);
+    setSelectedSize("");
+    setSelectedColor("");
 
     const fetchProduct = async () => {
       try {
@@ -32,17 +35,12 @@ function ProductDetail() {
         setProduct(res.data);
       } catch (err) {
         console.error(err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchProduct();
   }, [id]);
 
-  // 2. Logic lấy tồn kho an toàn
-  const realStock = product
-    ? Math.max(product.stock || 0, product.countInStock || 0)
-    : 0;
+  const realStock = product?.stock || 0;
 
   const handleQty = (amount) => {
     setQuantity((prev) => {
@@ -59,7 +57,6 @@ function ProductDetail() {
       await api.post(`/products/${id}/reviews`, { rating, comment });
       toast.success("Đã gửi đánh giá!");
       setComment("");
-      // Refresh lại data để hiện review mới
       const res = await api.get(`/products/${id}`);
       setProduct(res.data);
     } catch (err) {
@@ -67,9 +64,22 @@ function ProductDetail() {
     }
   };
 
-  if (loading) return <div className="text-center mt-20">Đang tải...</div>;
-  if (!product)
-    return <div className="text-center mt-20">Không tìm thấy sản phẩm</div>;
+  // 👇 HÀM XỬ LÝ THÊM VÀO GIỎ AN TOÀN
+  const handleAddToCart = (isBuyNow = false) => {
+    // Gọi hàm addToCart từ Context (Hàm này phải trả về true/false)
+    const success = addToCart(product, quantity, selectedSize, selectedColor);
+
+    if (success) {
+      if (isBuyNow) {
+        navigate("/cart"); // Nếu mua ngay và thành công -> Chuyển trang
+      } else {
+        toast.success("Đã thêm vào giỏ hàng! 🛒"); // Nếu chỉ thêm -> Báo thành công
+      }
+    }
+    // Nếu success = false (chưa chọn size/màu), CartContext đã tự báo lỗi rồi, không làm gì cả.
+  };
+
+  if (!product) return <div className="text-center mt-20">Đang tải...</div>;
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -108,6 +118,51 @@ function ProductDetail() {
           </p>
           <p className="text-gray-600 mb-6">{product.description}</p>
 
+          {/* 👇 CHỌN MÀU SẮC */}
+          {product.colors && product.colors.length > 0 && (
+            <div className="mb-4">
+              <span className="font-bold mr-2">Màu sắc:</span>
+              <div className="flex gap-2 mt-1">
+                {product.colors.map((c, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedColor(c)}
+                    className={`px-3 py-1 border rounded ${
+                      selectedColor === c
+                        ? "bg-black text-white border-black"
+                        : "bg-white text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 👇 CHỌN KÍCH CỠ */}
+          {product.sizes && product.sizes.length > 0 && (
+            <div className="mb-6">
+              <span className="font-bold mr-2">Kích cỡ:</span>
+              <div className="flex gap-2 mt-1">
+                {product.sizes.map((s, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedSize(s)}
+                    className={`w-10 h-10 border rounded flex items-center justify-center ${
+                      selectedSize === s
+                        ? "bg-black text-white border-black"
+                        : "bg-white text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SỐ LƯỢNG */}
           <div className="flex items-center gap-4 mb-6">
             <span className="font-bold">Số lượng:</span>
             {realStock > 0 ? (
@@ -142,19 +197,17 @@ function ProductDetail() {
             )}
           </div>
 
+          {/* NÚT MUA (Đã sửa logic) */}
           <div className="flex gap-4">
             <button
-              onClick={() => addToCart(product, quantity)}
+              onClick={() => handleAddToCart(false)} // false = Chỉ thêm, không chuyển trang
               disabled={realStock === 0}
               className="flex-1 bg-black text-white py-3 rounded font-bold hover:bg-gray-800 disabled:bg-gray-400"
             >
               THÊM VÀO GIỎ
             </button>
             <button
-              onClick={() => {
-                addToCart(product, quantity);
-                navigate("/cart");
-              }}
+              onClick={() => handleAddToCart(true)} // true = Mua ngay -> Chuyển trang
               disabled={realStock === 0}
               className="flex-1 bg-red-600 text-white py-3 rounded font-bold hover:bg-red-700 disabled:bg-gray-400"
             >
@@ -164,6 +217,7 @@ function ProductDetail() {
         </div>
       </div>
 
+      {/* Review Section (Giữ nguyên) */}
       <div className="grid md:grid-cols-2 gap-10">
         <div>
           <h3 className="font-bold text-xl mb-4 border-l-4 border-blue-600 pl-3">
