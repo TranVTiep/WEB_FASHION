@@ -1,174 +1,116 @@
+import asyncHandler from "express-async-handler";
 import Product from "../models/Product.js";
 
-// --- 1. LẤY DANH SÁCH SẢN PHẨM (PUBLIC) ---
-export const getProducts = async (req, res) => {
-  try {
-    const pageSize = 8;
-    const page = Number(req.query.pageNumber) || 1;
+export const getProducts = asyncHandler(async (req, res) => {
+  const pageSize = 8;
+  const page = Number(req.query.pageNumber) || 1;
+  const keyword = req.query.keyword
+    ? { name: { $regex: req.query.keyword, $options: "i" } }
+    : {};
+  const categoryFilter = req.query.category
+    ? { category: req.query.category }
+    : {};
 
-    // Tìm kiếm theo tên
-    const keyword = req.query.keyword
-      ? { name: { $regex: req.query.keyword, $options: "i" } }
-      : {};
+  const count = await Product.countDocuments({ ...keyword, ...categoryFilter });
+  const products = await Product.find({ ...keyword, ...categoryFilter })
+    .populate("category")
+    .limit(pageSize)
+    .skip(pageSize * (page - 1))
+    .sort({ createdAt: -1 });
 
-    // Lọc theo danh mục
-    const categoryFilter = req.query.category
-      ? { category: req.query.category }
-      : {};
+  res.json({ products, page, pages: Math.ceil(count / pageSize) });
+});
 
-    // Đếm tổng số
-    const count = await Product.countDocuments({
-      ...keyword,
-      ...categoryFilter,
-    });
-
-    // Lấy dữ liệu
-    const products = await Product.find({ ...keyword, ...categoryFilter })
-      .populate("category")
-      .limit(pageSize)
-      .skip(pageSize * (page - 1))
-      .sort({ createdAt: -1 });
-
-    res.json({ products, page, pages: Math.ceil(count / pageSize) });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+export const getProductById = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id)
+    .populate("category")
+    .populate("reviews.user", "name email");
+  if (!product) {
+    res.status(404);
+    throw new Error("Không tìm thấy sản phẩm");
   }
-};
+  res.json(product);
+});
 
-// --- 2. LẤY CHI TIẾT 1 SẢN PHẨM (PUBLIC) ---
-export const getProductById = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id)
-      .populate("category")
-      .populate("reviews.user", "name email");
+export const createProduct = asyncHandler(async (req, res) => {
+  const { stock, countInStock, ...rest } = req.body;
+  const finalStock = Number(stock) || Number(countInStock) || 0;
+  const product = await Product.create({ ...rest, stock: finalStock });
+  res.status(201).json(product);
+});
 
-    if (!product)
-      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+export const updateProduct = asyncHandler(async (req, res) => {
+  const { name, price, description, image, category, stock, countInStock } =
+    req.body;
+  const product = await Product.findById(req.params.id);
+  if (!product) {
+    res.status(404);
+    throw new Error("Không tìm thấy sản phẩm");
   }
-};
 
-// --- 3. TẠO SẢN PHẨM MỚI (ADMIN) ---
-export const createProduct = async (req, res) => {
-  try {
-    // Lấy dữ liệu từ Client gửi lên
-    const { stock, countInStock, ...rest } = req.body;
+  product.name = name || product.name;
+  product.price = price || product.price;
+  product.description = description || product.description;
+  product.image = image || product.image;
+  product.category = category || product.category;
 
-    // 👇 LOGIC QUAN TRỌNG:
-    // Nếu Client gửi 'stock' thì lấy 'stock'.
-    // Nếu lỡ gửi 'countInStock' (do code cũ) thì vẫn lấy nó gán vào 'stock' để không bị mất dữ liệu.
-    const finalStock = Number(stock) || Number(countInStock) || 0;
+  if (stock !== undefined) product.stock = Number(stock);
+  else if (countInStock !== undefined) product.stock = Number(countInStock);
 
-    const product = await Product.create({
-      ...rest,
-      stock: finalStock, // Chỉ lưu vào biến stock chuẩn của Model
-    });
-    res.status(201).json(product);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  const updatedProduct = await product.save();
+  res.json(updatedProduct);
+});
+
+export const deleteProduct = asyncHandler(async (req, res) => {
+  const product = await Product.findByIdAndDelete(req.params.id);
+  if (!product) {
+    res.status(404);
+    throw new Error("Không tìm thấy sản phẩm");
   }
-};
+  res.json({ message: "Đã xóa sản phẩm" });
+});
 
-// --- 4. CẬP NHẬT SẢN PHẨM (ADMIN) ---
-export const updateProduct = async (req, res) => {
-  try {
-    const { name, price, description, image, category, stock, countInStock } =
-      req.body;
+export const createProductReview = asyncHandler(async (req, res) => {
+  const { rating, comment } = req.body;
+  const product = await Product.findById(req.params.id);
+  if (!product) {
+    res.status(404);
+    throw new Error("Không tìm thấy sản phẩm");
+  }
 
-    const product = await Product.findById(req.params.id);
-    if (!product)
-      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+  const alreadyReviewed = product.reviews.find(
+    (r) => r.user.toString() === req.user._id.toString(),
+  );
+  if (alreadyReviewed) {
+    res.status(400);
+    throw new Error("Bạn đã đánh giá rồi!");
+  }
 
-    product.name = name || product.name;
-    product.price = price || product.price;
-    product.description = description || product.description;
-    product.image = image || product.image;
-    product.category = category || product.category;
+  const review = {
+    name: req.user.name,
+    rating: Number(rating),
+    comment,
+    user: req.user._id,
+  };
+  product.reviews.push(review);
+  product.numReviews = product.reviews.length;
+  product.rating =
+    product.reviews.reduce((acc, item) => item.rating + acc, 0) /
+    product.reviews.length;
+  await product.save();
+  res.status(201).json({ message: "Đánh giá thành công!" });
+});
 
-    // 👇 LOGIC CẬP NHẬT KHO (CHỈ DÙNG STOCK) 👇
-    if (stock !== undefined) {
-      product.stock = Number(stock);
-    } else if (countInStock !== undefined) {
-      // Fallback: Nếu FE gửi nhầm countInStock thì vẫn hứng lấy
-      product.stock = Number(countInStock);
+export const fixStockData = asyncHandler(async (req, res) => {
+  const products = await Product.find({});
+  let count = 0;
+  for (const p of products) {
+    const rawData = p.toObject();
+    if (p.stock === 0 && rawData.countInStock > 0) {
+      p.stock = rawData.countInStock;
+      await p.save();
+      count++;
     }
-
-    const updatedProduct = await product.save();
-    res.json(updatedProduct);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
   }
-};
-
-// --- 5. XÓA SẢN PHẨM (ADMIN) ---
-export const deleteProduct = async (req, res) => {
-  try {
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ message: "Đã xóa sản phẩm" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// --- 6. GỬI ĐÁNH GIÁ (USER) ---
-export const createProductReview = async (req, res) => {
-  try {
-    const { rating, comment } = req.body;
-    const product = await Product.findById(req.params.id);
-
-    if (product) {
-      const alreadyReviewed = product.reviews.find(
-        (r) => r.user.toString() === req.user._id.toString(),
-      );
-      if (alreadyReviewed)
-        return res.status(400).json({ message: "Bạn đã đánh giá rồi!" });
-
-      const review = {
-        name: req.user.name,
-        rating: Number(rating),
-        comment,
-        user: req.user._id,
-      };
-
-      product.reviews.push(review);
-      product.numReviews = product.reviews.length;
-      product.rating =
-        product.reviews.reduce((acc, item) => item.rating + acc, 0) /
-        product.reviews.length;
-
-      await product.save();
-      res.status(201).json({ message: "Đánh giá thành công!" });
-    } else {
-      res.status(404).json({ message: "Không tìm thấy sản phẩm" });
-    }
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// --- 7. CÔNG CỤ DỌN DẸP DỮ LIỆU (ADMIN) ---
-// Chức năng: Tìm những sản phẩm cũ đang lưu số lượng ở 'countInStock' và chuyển nó về 'stock'
-export const fixStockData = async (req, res) => {
-  try {
-    const products = await Product.find({});
-    let count = 0;
-    for (const p of products) {
-      // Lấy raw data để tìm countInStock ẩn trong DB (dù model không khai báo)
-      const rawData = p.toObject();
-
-      // Nếu stock đang bằng 0, mà lại tìm thấy countInStock có dữ liệu
-      if (p.stock === 0 && rawData.countInStock > 0) {
-        p.stock = rawData.countInStock;
-        await p.save();
-        count++;
-      }
-    }
-    res.json({
-      message: `Đã khôi phục dữ liệu kho vào biến 'stock' cho ${count} sản phẩm!`,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+  res.json({ message: `Đã khôi phục kho cho ${count} sản phẩm!` });
+});

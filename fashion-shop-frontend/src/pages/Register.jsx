@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate, Link } from "react-router-dom"; // 👈 Thêm Link
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 
 function Register() {
@@ -14,10 +14,9 @@ function Register() {
     e.preventDefault();
     try {
       await register(name, email, password);
-      toast.success("Đăng ký thành công! Chào mừng bạn. 🎉");
-      navigate("/"); // Đẩy thẳng vào trang chủ luôn
+      toast.success("Đăng ký thành công! Chào mừng bạn. 🌿");
+      navigate("/");
     } catch (err) {
-      // 👇 Lấy lỗi chuẩn từ Backend (vd: "Email đã tồn tại")
       const errorMessage =
         err.response?.data?.message || "Đăng ký thất bại! ❌";
       toast.error(errorMessage);
@@ -25,51 +24,59 @@ function Register() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 border rounded shadow-lg bg-white">
-      <h2 className="text-2xl font-bold mb-4 text-center">Đăng ký</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Họ tên"
-          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Mật khẩu"
-          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength="6" // Khuyến khích mk ít nhất 6 ký tự
-        />
-        <button className="w-full bg-black text-white py-2 rounded font-bold hover:bg-gray-800 transition">
-          Đăng ký
-        </button>
-      </form>
+    <div className="min-h-[75vh] flex items-center justify-center bg-[#F8FAFC] py-10">
+      <div className="max-w-md w-full p-8 bg-white rounded-[2rem] shadow-sm border border-gray-100">
+        <h2 className="text-3xl font-bold mb-2 text-center text-gray-800">
+          Tạo tài khoản
+        </h2>
+        <p className="text-center text-gray-500 mb-8 text-sm">
+          Bắt đầu hành trình mua sắm xanh cùng chúng tôi
+        </p>
 
-      {/* 👇 Thêm điều hướng về trang Đăng nhập */}
-      <p className="mt-4 text-sm text-center">
-        Đã có tài khoản?{" "}
-        <Link
-          to="/login"
-          className="text-blue-600 hover:underline font-semibold"
-        >
-          Đăng nhập
-        </Link>
-      </p>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <input
+            type="text"
+            placeholder="Họ và tên"
+            className="w-full bg-gray-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full bg-gray-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Mật khẩu (Tối thiểu 6 ký tự)"
+            className="w-full bg-gray-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength="6"
+          />
+          <button className="w-full bg-emerald-500 text-white py-4 rounded-2xl font-bold hover:bg-emerald-600 transition shadow-md shadow-emerald-200 mt-2">
+            Đăng ký ngay
+          </button>
+        </form>
+
+        <div className="mt-8 text-sm text-center">
+          <p className="text-gray-500">
+            Đã có tài khoản?{" "}
+            <Link
+              to="/login"
+              className="text-emerald-600 font-bold hover:underline"
+            >
+              Đăng nhập
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
-
 export default Register;

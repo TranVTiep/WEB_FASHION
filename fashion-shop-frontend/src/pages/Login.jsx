@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate, Link } from "react-router-dom"; // 👈 Thêm Link
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 
 function Login() {
@@ -13,57 +13,59 @@ function Login() {
     e.preventDefault();
     try {
       await login(email, password);
-      toast.success("Đăng nhập thành công! 🎉");
+      toast.success("Đăng nhập thành công! 🌿");
       navigate("/");
     } catch (err) {
-      // 👇 Lấy câu thông báo lỗi chuẩn từ Backend trả về
-      const errorMessage = err.response?.data?.message || "Lỗi đăng nhập! ❌";
-      toast.error(errorMessage);
+      toast.error(err.response?.data?.message || "Lỗi đăng nhập!");
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 border rounded shadow-lg bg-white">
-      <h2 className="text-2xl font-bold mb-4 text-center">Đăng nhập</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Mật khẩu"
-          className="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-black"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button className="w-full bg-black text-white py-2 rounded font-bold hover:bg-gray-800 transition">
-          Đăng nhập
-        </button>
-      </form>
-
-      {/* 👇 Thêm điều hướng sang trang Đăng ký và Quên mật khẩu */}
-      <div className="mt-4 text-sm text-center flex flex-col space-y-2">
-        <p>
-          Chưa có tài khoản?{" "}
+    <div className="min-h-[70vh] flex items-center justify-center bg-[#F8FAFC]">
+      <div className="max-w-md w-full p-8 bg-white rounded-[2rem] shadow-sm border border-gray-100">
+        <h2 className="text-3xl font-bold mb-8 text-center text-gray-800">
+          Chào mừng trở lại
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <input
+            type="email"
+            placeholder="Nhập Email"
+            className="w-full bg-gray-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Mật khẩu"
+            className="w-full bg-gray-50 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button className="w-full bg-emerald-500 text-white py-4 rounded-2xl font-bold hover:bg-emerald-600 transition shadow-md shadow-emerald-200">
+            Đăng nhập
+          </button>
+        </form>
+        <div className="mt-8 text-sm text-center flex flex-col space-y-3">
+          <p className="text-gray-500">
+            Chưa có tài khoản?{" "}
+            <Link
+              to="/register"
+              className="text-emerald-600 font-bold hover:underline"
+            >
+              Tạo tài khoản
+            </Link>
+          </p>
           <Link
-            to="/register"
-            className="text-blue-600 hover:underline font-semibold"
+            to="/forgot-password"
+            className="text-gray-400 hover:text-emerald-500 font-medium"
           >
-            Đăng ký ngay
+            Quên mật khẩu?
           </Link>
-        </p>
-        <Link to="/forgot-password" className="text-gray-500 hover:underline">
-          Quên mật khẩu?
-        </Link>
+        </div>
       </div>
     </div>
   );
 }
-
 export default Login;

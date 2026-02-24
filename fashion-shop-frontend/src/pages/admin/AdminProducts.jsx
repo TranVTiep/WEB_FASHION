@@ -75,7 +75,7 @@ export default function AdminProducts() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // --- 4. XỬ LÝ NHẬP EXCEL (MỚI) ---
+  // 4. XỬ LÝ NHẬP EXCEL
   const handleImportExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -84,32 +84,25 @@ export default function AdminProducts() {
     importFormData.append("file", file);
 
     try {
-      // Thông báo đang xử lý
       toast.info("Đang đọc file Excel, vui lòng chờ... ⏳");
 
       await api.post("/upload/import", importFormData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Thông báo thành công
-      toast.success("Nhập sản phẩm từ Excel thành công! 🎉");
-
-      // Reset file input
+      toast.success("Nhập sản phẩm từ Excel thành công! 🌿");
       e.target.value = null;
-
-      // Load lại trang 1 để thấy sản phẩm mới
       setPage(1);
       fetchProducts(1);
     } catch (err) {
       console.error(err);
-      // Thông báo lỗi chi tiết từ Backend trả về
       const errorMsg = err.response?.data?.message || "Lỗi nhập file Excel!";
       toast.error(errorMsg + " ❌");
       e.target.value = null;
     }
   };
 
-  // Xử lý Submit Form
+  // 5. Xử lý Submit Form
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.category) {
@@ -126,10 +119,10 @@ export default function AdminProducts() {
     try {
       if (isEditing) {
         await api.put(`/products/${currentProduct._id}`, submitData);
-        toast.success("Cập nhật thành công!");
+        toast.success("Cập nhật thành công! 🌿");
       } else {
         await api.post("/products", submitData);
-        toast.success("Thêm mới thành công!");
+        toast.success("Thêm mới thành công! 🌿");
         setPage(1);
       }
 
@@ -174,7 +167,7 @@ export default function AdminProducts() {
     if (window.confirm("Bạn chắc chắn muốn xóa?")) {
       try {
         await api.delete(`/products/${id}`);
-        toast.success("Đã xóa sản phẩm");
+        toast.success("Đã xóa sản phẩm 🌿");
         if (products.length === 1 && page > 1) {
           setPage(page - 1);
         } else {
@@ -207,13 +200,13 @@ export default function AdminProducts() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
-      {/* --- CỘT TRÁI: FORM --- */}
-      <div className="md:col-span-1 space-y-4 sticky top-24 h-fit">
-        {/* 🔥 NÚT IMPORT EXCEL (MỚI) */}
-        <div className="bg-white p-4 rounded shadow border border-green-200">
-          <h3 className="font-bold text-gray-700 mb-2 text-sm uppercase">
-            Nhập hàng nhanh
+    <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8 min-h-screen">
+      {/* FORM BÊN TRÁI */}
+      <div className="lg:col-span-1 space-y-6">
+        {/* NÚT IMPORT EXCEL */}
+        <div className="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100 shadow-sm">
+          <h3 className="font-bold text-emerald-800 mb-3 text-sm uppercase">
+            Nhập hàng hàng loạt
           </h3>
           <input
             type="file"
@@ -224,109 +217,82 @@ export default function AdminProducts() {
           />
           <label
             htmlFor="import-excel"
-            className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold cursor-pointer transition shadow-sm"
+            className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-2xl font-bold cursor-pointer transition shadow-md shadow-emerald-200"
           >
-            📂 Nhập từ Excel
+            📂 Tải file Excel lên
           </label>
-          <p className="text-xs text-gray-400 text-center mt-2">
-            Hỗ trợ file .xlsx, .xls
-          </p>
         </div>
 
         {/* FORM NHẬP TAY */}
-        <div className="bg-white p-6 rounded shadow border">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">
+        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
+          <h2 className="text-xl font-bold mb-6 text-gray-800">
             {isEditing ? "Sửa sản phẩm" : "Thêm sản phẩm mới"}
           </h2>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium">Tên sản phẩm</label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input
+              name="name"
+              placeholder="Tên sản phẩm"
+              value={formData.name}
+              onChange={handleChange}
+              className="w-full bg-gray-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
+              required
+            />
+            <div className="grid grid-cols-2 gap-4">
               <input
-                name="name"
-                value={formData.name}
+                name="price"
+                type="number"
+                placeholder="Giá (VNĐ)"
+                value={formData.price}
                 onChange={handleChange}
-                className="w-full border p-2 rounded focus:border-blue-500 outline-none"
+                className="w-full bg-gray-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
+                required
+              />
+              <input
+                name="stock"
+                type="number"
+                placeholder="Tồn kho"
+                value={formData.stock}
+                onChange={handleChange}
+                className="w-full bg-gray-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-bold text-emerald-600 transition"
                 required
               />
             </div>
+            <input
+              name="image"
+              placeholder="Link ảnh (URL)"
+              value={formData.image}
+              onChange={handleChange}
+              className="w-full bg-gray-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
+            />
+            <textarea
+              name="description"
+              placeholder="Mô tả sản phẩm"
+              value={formData.description}
+              onChange={handleChange}
+              className="w-full bg-gray-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm transition"
+              rows="3"
+            />
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="w-full bg-gray-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm appearance-none transition"
+              required
+            >
+              <option value="">-- Chọn danh mục --</option>
+              {categories.map((cat) => (
+                <option key={cat._id} value={cat._id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-sm font-medium">Giá (VNĐ)</label>
-                <input
-                  name="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={handleChange}
-                  className="w-full border p-2 rounded focus:border-blue-500 outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Tồn kho</label>
-                <input
-                  name="stock"
-                  type="number"
-                  value={formData.stock}
-                  onChange={handleChange}
-                  className="w-full border p-2 rounded focus:border-blue-500 outline-none font-bold text-red-600"
-                  min="0"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">
-                Link ảnh (URL)
-              </label>
-              <input
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-                className="w-full border p-2 rounded focus:border-blue-500 outline-none"
-                placeholder="https://..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">Mô tả</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                className="w-full border p-2 rounded focus:border-blue-500 outline-none"
-                rows="3"
-              ></textarea>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Danh mục</label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="w-full border p-2 rounded bg-white outline-none"
-                required
-              >
-                <option value="">-- Chọn danh mục --</option>
-                {categories.map((cat) => (
-                  <option key={cat._id} value={cat._id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-3 pt-2">
               <button
                 type="submit"
-                className={`flex-1 text-white py-2 rounded font-bold transition shadow-md ${
-                  isEditing
-                    ? "bg-yellow-500 hover:bg-yellow-600"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
+                className={`flex-1 text-white py-3 rounded-2xl font-bold transition shadow-md ${isEditing ? "bg-yellow-500 hover:bg-yellow-600 shadow-yellow-200" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200"}`}
               >
-                {isEditing ? "Cập nhật" : "Thêm mới"}
+                {isEditing ? "Cập nhật" : "Lưu sản phẩm"}
               </button>
               {isEditing && (
                 <button
@@ -336,7 +302,7 @@ export default function AdminProducts() {
                     resetForm();
                     setCurrentProduct(null);
                   }}
-                  className="bg-gray-300 px-3 rounded text-gray-700 hover:bg-gray-400 transition"
+                  className="bg-gray-100 px-6 rounded-2xl text-gray-600 hover:bg-gray-200 font-bold transition"
                 >
                   Hủy
                 </button>
@@ -346,124 +312,117 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* --- CỘT PHẢI: DANH SÁCH --- */}
-      <div className="md:col-span-2">
-        <div className="flex justify-between items-center mb-6 border-l-4 border-blue-600 pl-4">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Danh sách sản phẩm
-          </h1>
-          <span className="text-sm font-semibold bg-gray-100 px-3 py-1 rounded">
-            Trang {page} / {pages}
-          </span>
-        </div>
+      {/* DANH SÁCH BÊN PHẢI */}
+      <div className="lg:col-span-2">
+        <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-800">Kho Sản Phẩm</h1>
+            <span className="text-sm font-bold bg-emerald-50 text-emerald-600 px-4 py-1.5 rounded-full border border-emerald-100">
+              Trang {page} / {pages}
+            </span>
+          </div>
 
-        <div className="grid grid-cols-1 gap-4">
-          {products.map((p) => {
-            const displayStock =
-              p.stock !== undefined ? p.stock : p.countInStock || 0;
-            return (
-              <div
-                key={p._id}
-                className="flex items-center bg-white border p-4 rounded shadow-sm hover:shadow-md transition"
-              >
-                <img
-                  src={p.image || "https://via.placeholder.com/80"}
-                  className="w-20 h-20 object-cover rounded border mr-4 bg-gray-100"
-                  alt=""
-                  onError={(e) =>
-                    (e.target.src = "https://via.placeholder.com/80")
-                  }
-                />
+          <div className="space-y-5">
+            {products.map((p) => {
+              const displayStock =
+                p.stock !== undefined ? p.stock : p.countInStock || 0;
+              return (
+                <div
+                  key={p._id}
+                  className="flex flex-col sm:flex-row items-center bg-gray-50/80 border border-gray-100 p-4 rounded-[1.5rem] hover:shadow-md transition gap-5"
+                >
+                  <img
+                    src={p.image || "https://via.placeholder.com/80"}
+                    className="w-24 h-24 object-cover rounded-2xl bg-white p-1 border border-gray-100"
+                    alt=""
+                  />
 
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-lg">{p.name}</h3>
-                    <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                      {p.category?.name || "Uncategorized"}
-                    </span>
-                  </div>
-
-                  <p className="text-gray-500 text-sm mt-1 mb-2 line-clamp-2">
-                    {p.description || "Chưa có mô tả"}
-                  </p>
-
-                  <div className="flex items-center gap-4 text-sm mt-2">
-                    <span className="text-red-600 font-bold text-base">
-                      {new Intl.NumberFormat("vi-VN", {
-                        style: "currency",
-                        currency: "VND",
-                      }).format(p.price)}
-                    </span>
-
-                    <div className="flex items-center border rounded overflow-hidden select-none">
-                      <button
-                        onClick={() => handleQuickStock(p, -1)}
-                        className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold border-r active:bg-gray-300"
-                      >
-                        -
-                      </button>
-                      <span
-                        className={`px-3 py-1 font-bold min-w-[3rem] text-center ${displayStock > 0 ? "text-green-700" : "text-red-600"}`}
-                      >
-                        {displayStock}
+                  <div className="flex-1 w-full">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-bold text-gray-800 text-lg line-clamp-1">
+                        {p.name}
+                      </h3>
+                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 uppercase whitespace-nowrap">
+                        {p.category?.name}
                       </span>
-                      <button
-                        onClick={() => handleQuickStock(p, 1)}
-                        className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold border-l active:bg-gray-300"
-                      >
-                        +
-                      </button>
+                    </div>
+                    <p className="text-gray-500 text-sm mt-1 mb-4 line-clamp-1">
+                      {p.description}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-5">
+                      <span className="text-emerald-600 font-bold text-lg">
+                        {new Intl.NumberFormat("vi-VN").format(p.price)}đ
+                      </span>
+                      <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                        <button
+                          onClick={() => handleQuickStock(p, -1)}
+                          className="px-3 py-1.5 hover:bg-gray-50 text-gray-500 font-bold border-r"
+                        >
+                          -
+                        </button>
+                        <span
+                          className={`px-4 text-sm font-bold ${displayStock > 0 ? "text-gray-800" : "text-red-500"}`}
+                        >
+                          {displayStock}
+                        </span>
+                        <button
+                          onClick={() => handleQuickStock(p, 1)}
+                          className="px-3 py-1.5 hover:bg-gray-50 text-gray-500 font-bold border-l"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-2 ml-4">
-                  <button
-                    onClick={() => handleEdit(p)}
-                    className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-200 font-medium transition"
-                  >
-                    Sửa
-                  </button>
-                  <button
-                    onClick={() => handleDelete(p._id)}
-                    className="bg-red-100 text-red-700 px-3 py-1 rounded text-sm hover:bg-red-200 font-medium transition"
-                  >
-                    Xóa
-                  </button>
+                  <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => handleEdit(p)}
+                      className="flex-1 bg-white border border-blue-100 text-blue-600 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-50 transition shadow-sm"
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p._id)}
+                      className="flex-1 bg-white border border-red-100 text-red-500 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-red-50 transition shadow-sm"
+                    >
+                      Xóa
+                    </button>
+                  </div>
                 </div>
+              );
+            })}
+
+            {products.length === 0 && (
+              <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <p className="text-gray-500 font-medium">
+                  Không tìm thấy sản phẩm nào.
+                </p>
               </div>
-            );
-          })}
+            )}
+          </div>
 
-          {products.length === 0 && (
-            <div className="text-center py-10 bg-gray-50 rounded border border-dashed">
-              <p className="text-gray-500">Không tìm thấy sản phẩm.</p>
+          {/* Phân trang */}
+          {pages > 1 && (
+            <div className="flex justify-center mt-10 gap-3">
+              <button
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page === 1}
+                className="px-5 py-2.5 rounded-xl font-bold bg-gray-50 text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-50 transition shadow-sm"
+              >
+                ← Trước
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(p + 1, pages))}
+                disabled={page === pages}
+                className="px-5 py-2.5 rounded-xl font-bold bg-gray-50 text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-50 transition shadow-sm"
+              >
+                Sau →
+              </button>
             </div>
           )}
         </div>
-
-        {/* Nút phân trang */}
-        {pages > 1 && (
-          <div className="flex justify-center mt-8 space-x-2">
-            <button
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              disabled={page === 1}
-              className={`px-4 py-2 border rounded font-bold transition ${page === 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white hover:bg-black hover:text-white"}`}
-            >
-              ← Trước
-            </button>
-            <span className="px-4 py-2 font-bold bg-gray-100 rounded text-gray-700 border">
-              {page} / {pages}
-            </span>
-            <button
-              onClick={() => setPage((prev) => Math.min(prev + 1, pages))}
-              disabled={page === pages}
-              className={`px-4 py-2 border rounded font-bold transition ${page === pages ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-white hover:bg-black hover:text-white"}`}
-            >
-              Sau →
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -16,9 +16,6 @@ const router = express.Router();
 router.get("/", getProducts);
 router.get("/:id", getProductById);
 
-// --- USER ROUTES (Phải đăng nhập mới dùng được) ---
-// 👇 2. Route cho phép user đánh giá sản phẩm
-// POST /api/products/:id/reviews
 router.post("/:id/reviews", protect, createProductReview);
 
 // --- ADMIN ROUTES (Chỉ Admin mới dùng được) ---

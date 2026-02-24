@@ -10,12 +10,10 @@ export default function Orders() {
   const fetchOrders = async () => {
     try {
       const res = await api.get("/orders/my-orders");
-      const sortedOrders = res.data.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+      setOrders(
+        res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
       );
-      setOrders(sortedOrders);
     } catch (err) {
-      console.error("Lỗi load đơn hàng:", err);
     } finally {
       setLoading(false);
     }
@@ -26,193 +24,140 @@ export default function Orders() {
   }, []);
 
   const handleCancelOrder = async (orderId) => {
-    if (!window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này không?"))
-      return;
-
+    if (!window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) return;
     try {
       await api.put(`/orders/${orderId}/cancel`);
-      toast.success("Đã hủy đơn hàng thành công ✅");
+      toast.success("Đã hủy đơn hàng thành công 🌿");
       fetchOrders();
     } catch (err) {
-      toast.error(
-        err.response?.data?.message || "Không thể hủy đơn hàng này ❌",
-      );
+      toast.error("Không thể hủy đơn hàng này");
     }
   };
 
-  // 👇 FIX 1: Thêm "complete" vào danh sách màu xanh
   const getStatusColor = (status) => {
     const s = String(status).toLowerCase();
-
     if (s.includes("pending") || s.includes("chờ"))
-      return "text-yellow-600 bg-yellow-100";
-    if (s.includes("confirm") || s.includes("xác nhận"))
-      return "text-blue-600 bg-blue-100";
-    if (
-      s.includes("shipping") ||
-      s.includes("giao") ||
-      s.includes("vận chuyển")
-    )
-      return "text-purple-600 bg-purple-100";
-
-    // 👇 Đã thêm "complete" vào đây
-    if (
-      s.includes("delivered") ||
-      s.includes("hoàn thành") ||
-      s.includes("xong") ||
-      s.includes("success") ||
-      s.includes("complete")
-    )
-      return "text-green-600 bg-green-100";
-
-    if (s.includes("cancel") || s.includes("hủy") || s.includes("fail"))
-      return "text-red-600 bg-red-100";
-
-    return "text-gray-600 bg-gray-100";
+      return "text-yellow-600 bg-yellow-50 border border-yellow-200";
+    if (s.includes("shipping"))
+      return "text-blue-600 bg-blue-50 border border-blue-200";
+    if (s.includes("delivered") || s.includes("complete"))
+      return "text-emerald-600 bg-emerald-50 border border-emerald-200";
+    if (s.includes("cancel") || s.includes("hủy"))
+      return "text-red-500 bg-red-50 border border-red-200";
+    return "text-gray-600 bg-gray-50 border border-gray-200";
   };
 
-  // 👇 FIX 2: Thêm "complete" vào để dịch sang tiếng Việt là "Giao thành công"
   const translateStatus = (status) => {
     const s = String(status).toLowerCase();
-
-    if (s.includes("pending") || s.includes("chờ")) return "Chờ xử lý";
+    if (s.includes("pending")) return "Chờ xử lý";
     if (s.includes("shipping")) return "Đang giao hàng";
-
-    // 👇 Đã thêm "complete" vào đây
-    if (
-      s.includes("delivered") ||
-      s.includes("success") ||
-      s.includes("hoàn thành") ||
-      s.includes("complete")
-    )
-      return "Giao thành công";
-
-    if (s.includes("cancel") || s.includes("hủy")) return "Đã hủy";
-
+    if (s.includes("delivered") || s.includes("complete")) return "Hoàn thành";
+    if (s.includes("cancel")) return "Đã hủy";
     return status;
   };
 
-  const canCancel = (status) => {
-    const s = String(status).toLowerCase();
-    return s.includes("pending") || s.includes("chờ");
-  };
-
-  const isCancelled = (status) => {
-    const s = String(status).toLowerCase();
-    return s.includes("cancel") || s.includes("hủy");
-  };
-
   if (loading)
-    return <div className="text-center mt-20">Đang tải lịch sử... ⏳</div>;
+    return (
+      <div className="text-center mt-20 text-emerald-500 font-medium">
+        Đang tải lịch sử... 🌿
+      </div>
+    );
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8 text-center">Lịch sử đơn hàng</h1>
-
+    <div className="max-w-5xl mx-auto p-6 min-h-[70vh]">
+      <h1 className="text-3xl font-bold mb-10 text-center text-gray-800">
+        Lịch Sử Đơn Hàng
+      </h1>
       {orders.length === 0 ? (
-        <div className="text-center py-20 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 mb-4">Bạn chưa có đơn hàng nào.</p>
+        <div className="text-center py-20 bg-white rounded-[2rem] shadow-sm border border-gray-100">
+          <p className="text-gray-500 mb-6">Bạn chưa có đơn hàng nào.</p>
           <Link
             to="/products"
-            className="bg-black text-white px-6 py-2 rounded font-bold"
+            className="bg-emerald-500 text-white px-8 py-3 rounded-full font-bold shadow-md hover:bg-emerald-600 transition"
           >
             Mua sắm ngay
           </Link>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {orders.map((order) => (
             <div
               key={order._id}
-              className="bg-white border rounded-lg shadow-sm overflow-hidden"
+              className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden hover:shadow-md transition"
             >
-              {/* HEADER */}
-              <div className="bg-gray-50 p-4 border-b flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="text-sm text-gray-600">
-                  <span className="font-bold">
-                    Mã: #{order._id.slice(-6).toUpperCase()}
+              <div className="bg-gray-50/50 p-5 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="text-sm text-gray-500 font-medium">
+                  <span className="text-gray-800 font-bold mr-4">
+                    #{order._id.slice(-6).toUpperCase()}
                   </span>
-                  <span className="mx-2">|</span>
                   <span>
                     {new Date(order.createdAt).toLocaleDateString("vi-VN")}
                   </span>
                 </div>
-
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getStatusColor(
-                    order.status,
-                  )}`}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase ${getStatusColor(order.status)}`}
                 >
                   {translateStatus(order.status)}
                 </span>
               </div>
-
-              {/* BODY */}
-              <div className="p-4">
-                {order.items.map((item, idx) => {
-                  const product = item.product || {
-                    name: "Sản phẩm đã ngừng kinh doanh",
-                    image: "",
-                  };
-                  return (
-                    <div
-                      key={idx}
-                      className="flex justify-between items-center py-2 border-b last:border-0 border-gray-100"
-                    >
-                      <div className="flex items-center gap-4">
-                        <img
-                          src={
-                            product.image || "https://via.placeholder.com/50"
-                          }
-                          className="w-16 h-16 object-cover rounded border"
-                          alt=""
-                        />
-                        <div>
-                          <p className="font-bold text-gray-800">
-                            {product.name}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            x{item.quantity}
-                          </p>
-                        </div>
+              <div className="p-6 space-y-4">
+                {order.items.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex justify-between items-center py-3 border-b last:border-0 border-gray-50"
+                  >
+                    <div className="flex items-center gap-5">
+                      <img
+                        src={
+                          item.product?.image ||
+                          "https://via.placeholder.com/80"
+                        }
+                        className="w-20 h-20 object-cover rounded-2xl bg-gray-50"
+                        alt=""
+                      />
+                      <div>
+                        <p className="font-bold text-gray-800">
+                          {item.product?.name || "Sản phẩm đã xóa"}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1 uppercase">
+                          Size: {item.size} | Màu: {item.color}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1 font-medium">
+                          x{item.quantity}
+                        </p>
                       </div>
-                      <span className="font-medium">
-                        {new Intl.NumberFormat("vi-VN", {
-                          style: "currency",
-                          currency: "VND",
-                        }).format(item.price * item.quantity)}
-                      </span>
                     </div>
-                  );
-                })}
+                    <span className="font-bold text-gray-800">
+                      {new Intl.NumberFormat("vi-VN").format(
+                        item.price * item.quantity,
+                      )}
+                      đ
+                    </span>
+                  </div>
+                ))}
               </div>
-
-              {/* FOOTER */}
-              <div className="p-4 bg-gray-50 border-t flex justify-between items-center">
-                <div className="text-lg">
+              <div className="p-6 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="text-lg font-medium text-gray-600">
                   Tổng tiền:{" "}
-                  <span className="font-bold text-red-600">
-                    {new Intl.NumberFormat("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    }).format(order.totalPrice || order.total)}
+                  <span className="font-bold text-emerald-600 text-xl ml-2">
+                    {new Intl.NumberFormat("vi-VN").format(order.totalPrice)}đ
                   </span>
                 </div>
-
-                {/* NÚT BẤM */}
-                {canCancel(order.status) ? (
+                {String(order.status).toLowerCase().includes("pending") ? (
                   <button
                     onClick={() => handleCancelOrder(order._id)}
-                    className="bg-white border border-red-500 text-red-500 hover:bg-red-50 px-4 py-2 rounded text-sm font-bold transition"
+                    className="bg-white border-2 border-red-100 text-red-500 hover:bg-red-50 px-6 py-2.5 rounded-xl text-sm font-bold transition"
                   >
                     Hủy đơn hàng
                   </button>
                 ) : (
                   <button
                     disabled
-                    className="bg-gray-200 text-gray-400 px-4 py-2 rounded text-sm font-bold cursor-not-allowed border border-transparent"
+                    className="bg-gray-100 text-gray-400 px-6 py-2.5 rounded-xl text-sm font-bold cursor-not-allowed"
                   >
-                    {isCancelled(order.status) ? "Đã hủy" : "Không thể hủy"}
+                    {String(order.status).toLowerCase().includes("cancel")
+                      ? "Đã hủy"
+                      : "Không thể hủy"}
                   </button>
                 )}
               </div>

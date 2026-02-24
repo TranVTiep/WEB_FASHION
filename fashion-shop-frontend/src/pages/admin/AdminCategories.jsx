@@ -2,25 +2,23 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentCategory, setCurrentCategory] = useState(null);
-  const [name, setName] = useState(""); // Form chỉ cần nhập tên
-
+  const [name, setName] = useState("");
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // 1. Bảo vệ trang Admin
   useEffect(() => {
     if (user && user.role !== "admin") {
-      alert("Bạn không có quyền truy cập!");
+      toast.error("Bạn không có quyền truy cập!");
       navigate("/");
     }
   }, [user, navigate]);
 
-  // 2. Lấy danh sách danh mục
   const fetchCategories = async () => {
     try {
       const res = await api.get("/categories");
@@ -34,41 +32,31 @@ export default function AdminCategories() {
     fetchCategories();
   }, []);
 
-  // 3. Xử lý Thêm / Sửa
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return alert("Tên danh mục không được để trống");
-
+    if (!name.trim()) return toast.warning("Tên danh mục không được để trống");
     try {
       if (isEditing) {
-        // Sửa
         await api.put(`/categories/${currentCategory._id}`, { name });
-        alert("Cập nhật thành công!");
+        toast.success("Cập nhật thành công! 🌿");
       } else {
-        // Thêm mới
         await api.post("/categories", { name });
-        alert("Thêm danh mục thành công!");
+        toast.success("Thêm danh mục thành công! 🌿");
       }
-
-      // Reset form
       setName("");
       setIsEditing(false);
       setCurrentCategory(null);
-      fetchCategories(); // Load lại bảng
+      fetchCategories();
     } catch (err) {
-      console.error(err);
-      alert("Lỗi lưu danh mục");
+      toast.error("Lỗi lưu danh mục");
     }
   };
 
-  // 4. Nút Sửa
   const handleEdit = (cat) => {
     setIsEditing(true);
     setCurrentCategory(cat);
     setName(cat.name);
   };
-
-  // 5. Nút Xóa
   const handleDelete = async (id) => {
     if (
       window.confirm(
@@ -77,39 +65,38 @@ export default function AdminCategories() {
     ) {
       try {
         await api.delete(`/categories/${id}`);
-        alert("Đã xóa danh mục");
+        toast.success("Đã xóa danh mục");
         fetchCategories();
       } catch (err) {
-        alert("Lỗi xóa danh mục");
+        toast.error("Lỗi xóa danh mục");
       }
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div className="max-w-5xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8 min-h-screen">
       {/* FORM BÊN TRÁI */}
-      <div className="md:col-span-1 bg-white p-6 rounded shadow border h-fit">
-        <h2 className="text-xl font-bold mb-4 text-gray-800">
+      <div className="md:col-span-1 bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 h-fit sticky top-24">
+        <h2 className="text-xl font-bold mb-6 text-gray-800">
           {isEditing ? "Sửa danh mục" : "Thêm danh mục"}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-bold text-gray-600 mb-2">
               Tên danh mục
             </label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border p-2 rounded focus:ring-2 focus:ring-purple-500 outline-none"
+              className="w-full bg-gray-50 p-4 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition text-sm"
               placeholder="Ví dụ: Áo thun, Quần jean..."
               required
             />
           </div>
-
-          <div className="flex gap-2">
+          <div className="flex gap-3 pt-2">
             <button
               type="submit"
-              className={`flex-1 text-white py-2 rounded font-bold ${isEditing ? "bg-yellow-500 hover:bg-yellow-600" : "bg-purple-600 hover:bg-purple-700"}`}
+              className={`flex-1 text-white py-3 rounded-xl font-bold transition shadow-md ${isEditing ? "bg-yellow-500 hover:bg-yellow-600" : "bg-emerald-500 hover:bg-emerald-600"}`}
             >
               {isEditing ? "Cập nhật" : "Thêm mới"}
             </button>
@@ -120,7 +107,7 @@ export default function AdminCategories() {
                   setIsEditing(false);
                   setName("");
                 }}
-                className="bg-gray-300 px-3 rounded text-gray-700 hover:bg-gray-400"
+                className="bg-gray-100 px-4 rounded-xl text-gray-600 hover:bg-gray-200 font-bold transition"
               >
                 Hủy
               </button>
@@ -131,51 +118,49 @@ export default function AdminCategories() {
 
       {/* DANH SÁCH BÊN PHẢI */}
       <div className="md:col-span-2">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800 border-l-4 border-purple-600 pl-4">
-          Quản lý Danh mục
-        </h1>
+        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
+          <h1 className="text-2xl font-bold mb-6 text-gray-800">
+            Quản lý Danh mục
+          </h1>
 
-        <div className="bg-white rounded shadow border overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-100 text-gray-700 uppercase text-xs font-bold">
-              <tr>
-                <th className="p-4 border-b">Tên danh mục</th>
-                <th className="p-4 border-b">ID (Dùng cho API)</th>
-                <th className="p-4 border-b text-center">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {categories.map((cat) => (
-                <tr key={cat._id} className="hover:bg-gray-50">
-                  <td className="p-4 font-bold text-gray-800">{cat.name}</td>
-                  <td className="p-4 text-xs font-mono text-gray-500">
-                    {cat._id}
-                  </td>
-                  <td className="p-4 text-center space-x-2">
-                    <button
-                      onClick={() => handleEdit(cat)}
-                      className="text-blue-600 hover:underline font-medium text-sm"
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      onClick={() => handleDelete(cat._id)}
-                      className="text-red-500 hover:underline font-medium text-sm"
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {categories.length === 0 && (
-                <tr>
-                  <td colSpan="3" className="p-6 text-center text-gray-500">
-                    Chưa có danh mục nào. Hãy thêm mới!
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <div className="space-y-3">
+            {categories.map((cat) => (
+              <div
+                key={cat._id}
+                className="flex flex-col sm:flex-row justify-between items-center bg-gray-50/80 p-4 rounded-2xl border border-gray-100 hover:shadow-sm transition gap-4"
+              >
+                <div>
+                  <h3 className="font-bold text-gray-800 text-lg">
+                    {cat.name}
+                  </h3>
+                  <p className="text-[10px] text-gray-400 font-mono mt-1">
+                    ID: {cat._id}
+                  </p>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => handleEdit(cat)}
+                    className="flex-1 bg-white border border-blue-100 text-blue-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-50 transition"
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    onClick={() => handleDelete(cat._id)}
+                    className="flex-1 bg-white border border-red-100 text-red-500 px-4 py-2 rounded-xl text-sm font-bold hover:bg-red-50 transition"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            ))}
+            {categories.length === 0 && (
+              <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <p className="text-gray-500">
+                  Chưa có danh mục nào. Hãy thêm mới!
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

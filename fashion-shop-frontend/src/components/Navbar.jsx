@@ -7,7 +7,7 @@ function Navbar() {
   const { user, logout } = useAuth();
   const { cart } = useCart();
   const navigate = useNavigate();
-  const location = useLocation(); // Dùng để highlight link đang active
+  const location = useLocation();
 
   const isAdmin = user?.role === "admin";
 
@@ -22,45 +22,39 @@ function Navbar() {
     navigate("/");
   };
 
-  // Component Link có hiệu ứng gạch chân (Helper Component)
   const NavLink = ({ to, children, active }) => (
     <Link
       to={to}
-      className={`relative group py-2 text-xs font-bold uppercase tracking-widest transition-colors duration-300 ${
-        active ? "text-white" : "text-gray-400 hover:text-white"
+      className={`relative py-2 text-sm font-semibold transition-colors duration-300 ${
+        active ? "text-emerald-500" : "text-gray-600 hover:text-emerald-500"
       }`}
     >
       {children}
-      {/* Gạch chân animation */}
       <span
-        className={`absolute bottom-0 left-0 h-[1px] bg-white transition-all duration-300 ${active ? "w-full" : "w-0 group-hover:w-full"}`}
+        className={`absolute bottom-0 left-0 h-0.5 bg-emerald-500 transition-all duration-300 ${active ? "w-full" : "w-0"}`}
       ></span>
     </Link>
   );
 
   return (
-    <nav className="bg-black text-white sticky top-0 z-50 border-b border-gray-800">
-      <div className="max-w-[1440px] mx-auto px-6 h-20 flex justify-between items-center">
-        {/* 1. LOGO & MENU TRÁI */}
+    <nav className="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100 shadow-sm">
+      <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+        {/* LOGO */}
         <div className="flex items-center gap-12">
-          {/* LOGO */}
           <Link
             to="/"
-            className="text-2xl font-black tracking-tighter uppercase italic"
+            className="text-2xl font-bold tracking-tight text-emerald-600"
           >
-            Fashion<span className="text-gray-500">.</span>
+            Eco<span className="text-gray-800">Fashion</span>
           </Link>
 
-          {/* MENU CHÍNH (Desktop) */}
+          {/* MENU */}
           <div className="hidden md:flex items-center gap-8">
-            {/* --- NẾU LÀ ADMIN: Hiện menu quản lý --- */}
             {isAdmin ? (
               <>
-                {/* 👇 YÊU CẦU CỦA BẠN: Link về trang chủ cho Admin */}
                 <NavLink to="/" active={location.pathname === "/"}>
-                  Xem Website
+                  Website
                 </NavLink>
-                <span className="text-gray-700">|</span>
                 <NavLink
                   to="/admin/dashboard"
                   active={location.pathname.includes("/dashboard")}
@@ -87,37 +81,31 @@ function Navbar() {
                 </NavLink>
               </>
             ) : (
-              // --- NẾU LÀ USER/KHÁCH: Hiện menu mua hàng ---
               <>
                 <NavLink to="/" active={location.pathname === "/"}>
                   Trang chủ
                 </NavLink>
-                {/* Chỉ user đăng nhập mới thấy Shop (theo logic cũ của bạn) */}
-                {user && (
-                  <NavLink
-                    to="/products"
-                    active={location.pathname.includes("/products")}
-                  >
-                    Sản phẩm
-                  </NavLink>
-                )}
-                {/* Các link tĩnh khác nếu có */}
-                <NavLink to="/about" active={false}>
-                  About
+                <NavLink
+                  to="/products"
+                  active={location.pathname.includes("/products")}
+                >
+                  Sản phẩm
                 </NavLink>
               </>
             )}
           </div>
         </div>
 
-        {/* 2. MENU PHẢI (Search, Cart, Profile) */}
+        {/* CỤM BÊN PHẢI */}
         <div className="flex items-center gap-6">
-          {/* GIỎ HÀNG (Ẩn với Admin) */}
           {!isAdmin && user && (
-            <Link to="/cart" className="relative group p-2">
+            <Link
+              to="/cart"
+              className="relative p-2 text-gray-600 hover:text-emerald-500 transition"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-gray-300 group-hover:text-white transition"
+                className="h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -130,107 +118,44 @@ function Navbar() {
                 />
               </svg>
               {totalItems > 0 && (
-                <span className="absolute top-0 right-0 bg-white text-black text-[9px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
+                <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white">
                   {totalItems}
                 </span>
               )}
             </Link>
           )}
 
-          {/* USER DROPDOWN / LOGIN */}
           {user ? (
-            <div className="relative group z-50">
-              <button className="flex items-center gap-3 focus:outline-none py-2">
-                <div className="text-right hidden lg:block">
-                  <span className="block text-[10px] text-gray-400 uppercase tracking-wider">
-                    {isAdmin ? "Administrator" : "Member"}
-                  </span>
-                  <span className="block text-sm font-bold leading-none">
-                    {user.name}
-                  </span>
-                </div>
-                {/* Avatar Circle */}
-                <div
-                  className={`h-10 w-10 rounded-full flex items-center justify-center border-2 ${isAdmin ? "border-purple-500 text-purple-400" : "border-gray-600 text-gray-300"}`}
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-bold text-gray-800">{user.name}</p>
+                <Link
+                  to="/profile"
+                  className="text-xs text-emerald-600 hover:underline"
                 >
-                  <span className="font-bold text-lg">
-                    {user.name?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              </button>
-
-              {/* DROPDOWN MENU */}
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white text-black rounded shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 overflow-hidden">
-                <div className="bg-gray-100 px-4 py-3 border-b">
-                  <p className="text-sm font-bold text-gray-900 truncate">
-                    {user.name}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                </div>
-
-                <div className="py-2">
-                  <Link
-                    to="/profile"
-                    className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 transition"
-                  >
-                    <span>👤</span> Hồ sơ của tôi
-                  </Link>
-
-                  {!isAdmin && (
-                    <Link
-                      to="/orders"
-                      className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 transition"
-                    >
-                      <span>📦</span> Đơn mua
-                    </Link>
-                  )}
-
-                  {/* Link Admin mobile (Nếu màn hình nhỏ menu trên bị ẩn thì hiện ở đây) */}
-                  {isAdmin && (
-                    <div className="md:hidden border-t my-1 pt-1">
-                      <p className="px-4 py-1 text-[10px] uppercase text-gray-400 font-bold">
-                        Quản lý
-                      </p>
-                      <Link
-                        to="/admin/dashboard"
-                        className="block px-4 py-2 text-sm hover:bg-gray-100"
-                      >
-                        Thống kê
-                      </Link>
-                      <Link
-                        to="/admin/products"
-                        className="block px-4 py-2 text-sm hover:bg-gray-100"
-                      >
-                        Sản phẩm
-                      </Link>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 text-sm font-bold flex items-center gap-2 transition"
-                  >
-                    <span>🚪</span> Đăng xuất
-                  </button>
-                </div>
+                  Hồ sơ cá nhân
+                </Link>
               </div>
+              <button
+                onClick={handleLogout}
+                className="bg-red-50 text-red-500 px-4 py-2 rounded-2xl text-sm font-bold hover:bg-red-100 transition"
+              >
+                Thoát
+              </button>
             </div>
           ) : (
-            // CHƯA ĐĂNG NHẬP
-            <div className="flex items-center gap-6 border-l border-gray-700 pl-6 h-8">
+            <div className="flex items-center gap-3">
               <Link
                 to="/login"
-                className="text-sm font-medium hover:text-gray-300"
+                className="text-sm font-bold text-gray-600 hover:text-emerald-500"
               >
-                Login
+                Đăng nhập
               </Link>
               <Link
                 to="/register"
-                className="bg-white text-black text-xs font-bold uppercase tracking-wider px-5 py-2 hover:bg-gray-200 transition"
+                className="bg-emerald-500 text-white text-sm font-bold px-5 py-2.5 rounded-2xl hover:bg-emerald-600 transition shadow-md shadow-emerald-200"
               >
-                Sign Up
+                Đăng ký
               </Link>
             </div>
           )}
@@ -239,5 +164,4 @@ function Navbar() {
     </nav>
   );
 }
-
 export default Navbar;
